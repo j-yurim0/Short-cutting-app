@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>단척 컷팅표(CP) 생성기 - ExcelJS PRO</title>
+    
+    <!-- ExcelJS & FileSaver 라이브러리 (필수) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <style>
+        /* --- 기본 스타일 --- */
+        body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; margin: 0; padding: 20px; background-color: #f4f6f8; color: #333; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-radius: 12px; }
+        
+        /* 탭 스타일 */
+        .tabs { display: flex; border-bottom: 2px solid #e9ecef; margin-bottom: 20px; }
+        .tab-btn { padding: 12px 24px; cursor: pointer; border: none; background: none; font-size: 16px; font-weight: 600; color: #868e96; transition: 0.2s; }
+        .tab-btn.active { color: #007bff; border-bottom: 3px solid #007bff; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* --- 동(Dong) 관리 탭 --- */
+        .dong-tabs { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; align-items: center; overflow-x: auto; min-height: 42px; }
+        .dong-tab { 
+            padding: 8px 16px; border: 1px solid #dee2e6; border-bottom: none; border-radius: 8px 8px 0 0; 
+            background: #f8f9fa; cursor: pointer; font-size: 14px; font-weight: bold; color: #495057; display: flex; align-items: center; gap: 8px; white-space: nowrap;
+        }
+        .dong-tab.active { background: #fff; color: #007bff; border-color: #dee2e6; border-bottom: 2px solid #fff; margin-bottom: -7px; z-index: 1; }
+        .dong-tab:hover { background: #e9ecef; }
+        .dong-add-btn { padding: 8px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+        .dong-close-btn { font-size: 10px; color: #999; padding: 2px 5px; border-radius: 50%; }
+        .dong-close-btn:hover { background: #ffcccc; color: red; }
+
+        /* --- [입력 탭] 스타일 --- */
+        .input-layout { display: flex; gap: 30px; flex-wrap: wrap; align-items: flex-start; }
+        .left-sidebar { width: 300px; display: flex; flex-direction: column; gap: 20px; flex-shrink: 0; }
+        
+        .info-box { width: 100%; padding: 20px; border: 1px solid #e9ecef; border-radius: 8px; background-color: #fcfcfc; box-sizing: border-box; }
+        .info-box h3 { margin-top: 0; margin-bottom: 15px; font-size: 16px; color: #495057; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        
+        .input-field { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
+        .checkbox-group { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .checkbox-label { font-size: 14px; cursor: pointer; display: flex; align-items: center; color: #495057; }
+
+        .spec-list { max-height: 300px; overflow-y: auto; }
+        .spec-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f3f5; font-size: 14px; }
+        .spec-item:last-child { border-bottom: none; }
+        .spec-item label { display: flex; align-items: center; gap: 8px; cursor: pointer; color: #333; font-weight: 500; }
+        .spec-count { font-size: 12px; color: #007bff; font-weight: bold; background: #e7f5ff; padding: 2px 6px; border-radius: 10px; }
+        .empty-spec { text-align: center; color: #adb5bd; font-size: 13px; padding: 20px 0; }
+        
+        .excel-section { flex: 1; min-width: 400px; }
+        .excel-controls { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
+        .btn-preset { padding: 6px 12px; font-size: 12px; font-weight: bold; color: #555; background: white; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; }
+        .btn-preset:hover { background: #f8f9fa; }
+        .btn-preset.active { background: #e7f5ff; color: #007bff; border-color: #007bff; }
+        .btn-reset { color: #dc3545; border: none; background: none; font-size: 12px; cursor: pointer; text-decoration: underline; margin-left: auto; }
+
+        .paste-wrapper { position: relative; width: 100%; height: 600px; overflow: auto; border: 1px solid #ced4da; border-radius: 4px; background-color: #fff; }
+        .paste-catcher { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; z-index: 10; cursor: text; }
+        .placeholder-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #adb5bd; font-size: 16px; pointer-events: none; text-align: center; line-height: 1.6; }
+
+        .excel-view-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .excel-view-table th { position: sticky; top: 0; background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 2px; z-index: 5; min-width: 80px; }
+        .excel-view-table td { border: 1px solid #dee2e6; padding: 0; min-width: 60px; }
+        
+        .cell-input { width: 100%; height: 100%; border: none; padding: 6px; font-size: 12px; box-sizing: border-box; outline: none; background: transparent; text-align: center; }
+        .cell-input:focus { background: #e7f5ff; box-shadow: inset 0 0 0 2px #007bff; }
+
+        .col-selector { width: 100%; border: 1px solid transparent; border-radius: 3px; font-size: 11px; font-weight: bold; padding: 4px; cursor: pointer; text-align: center; color: #aaa; }
+        .col-selector:focus { outline: none; border-color: #007bff; }
+        .col-selector.mapped-blue { background-color: #e7f5ff; color: #007bff; border-color: #b3d7ff; }
+        .col-selector.mapped-green { background-color: #d4edda; color: #155724; border-color: #c3e6cb; }
+        .col-selector.mapped-gray { background-color: #f8f9fa; color: #495057; border-color: #dee2e6; }
+
+        .action-bar { margin-top: 20px; border-top: 1px solid #e9ecef; padding-top: 20px; text-align: right; display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
+        .btn-generate { background-color: #28a745; color: white; border: none; padding: 12px 30px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; max-width: 400px; }
+        .btn-generate:hover { background-color: #218838; }
+        .status-text { font-size: 14px; color: #666; animation: blink 1s infinite; display: none; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+
+        /* --- [결과 탭] 스타일 --- */
+        .cp-section { margin-bottom: 50px; }
+        .spec-tabs { display: flex; gap: 2px; margin-bottom: 0; border-bottom: 2px solid #555; }
+        .spec-tab-btn { 
+            padding: 10px 20px; background: #e9ecef; border: 1px solid #ddd; border-bottom: none; 
+            border-radius: 5px 5px 0 0; cursor: pointer; font-weight: bold; color: #555; margin-right: 2px;
+        }
+        .spec-tab-btn:hover { background: #dee2e6; }
+        .spec-tab-btn.active { background: #555; color: white; border-color: #555; }
+        
+        .spec-content { display: none; padding-top: 20px; }
+        .spec-content.active { display: block; animation: fadeIn 0.2s; }
+
+        .cp-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .company-name { font-size: 26px; font-weight: bold; }
+        .date-section { text-align: right; font-size: 14px; line-height: 1.6; }
+        .warning-text { color: red; font-weight: bold; font-size: 20px; margin: 15px 0; display: none; }
+        
+        table.cp-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 14px; border: 2px solid #000; }
+        table.cp-table th { background-color: #ffe699; border: 1px solid #000; padding: 8px 2px; font-weight: bold; height: 40px; vertical-align: middle; }
+        table.cp-table td { border: 1px solid #000; padding: 5px 2px; vertical-align: middle; }
+        
+        .split-cell { border-bottom: 1px dashed #999; padding: 4px 0; }
+        .split-cell:last-child { border-bottom: none; }
+        .input-hole { width: 80px; border: none; text-align: center; font-size: 14px; background: transparent; font-weight: bold; color: blue; }
+        .total-row { background-color: #ffffcc; font-weight: bold; }
+
+        /* 인쇄 설정 */
+        @media print {
+            body { background-color: white; padding: 0; }
+            .container { box-shadow: none; max-width: 100%; padding: 0; margin: 0; }
+            .tabs, .dong-tabs, .spec-tabs, .input-layout, .action-bar, .no-print { display: none !important; }
+            .tab-content { display: block !important; }
+            #output-tab { display: block !important; }
+            #input-tab { display: none !important; }
+            .spec-content { display: block !important; margin-bottom: 30px; } 
+            table.cp-table th { background-color: #ffe699 !important; -webkit-print-color-adjust: exact; }
+            .total-row { background-color: #ffffcc !important; -webkit-print-color-adjust: exact; }
+            .warning-text { -webkit-print-color-adjust: exact; }
+            .cp-header { border-bottom: 2px solid #000; }
+            .page-break { page-break-before: always; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 메인 탭 -->
+    <div class="tabs no-print">
+        <button class="tab-btn active" onclick="switchMainTab('input')">1. 데이터 입력</button>
+        <button class="tab-btn" onclick="switchMainTab('output')">2. 컷팅표 확인</button>
+    </div>
+
+    <!-- 동(Dong) 탭 -->
+    <div class="dong-tabs no-print" id="dongTabsContainer"></div>
+
+    <!-- 1. 입력 탭 -->
+    <div id="input-tab" class="tab-content active">
+        <div class="input-layout">
+            <div class="left-sidebar">
+                <div class="info-box">
+                    <h3>프로젝트 정보</h3>
+                    <input type="text" id="inputCompany" class="input-field" placeholder="업체명">
+                    <input type="text" id="inputSite" class="input-field" placeholder="현장명">
+                    <input type="text" id="inputMemo" class="input-field" placeholder="기타사항 (메모)">
+                    <div class="checkbox-group">
+                        <label class="checkbox-label"><input type="checkbox" id="checkNoDong" onchange="toggleNoDong()"> 동 없음 (체크 시 동 구분 안함)</label>
+                        <label class="checkbox-label"><input type="checkbox" id="checkBanding"> 철밴딩 동표기</label>
+                        <label class="checkbox-label"><input type="checkbox" id="checkUnder1Ton"> 1톤 미만 밴딩</label>
+                    </div>
+                </div>
+                <div class="info-box" id="specBox" style="display:none;">
+                    <h3>규격 선택 (자동 분석됨)</h3>
+                    <div id="specList" class="spec-list"></div>
+                </div>
+            </div>
+
+            <div class="excel-section">
+                <div class="excel-controls">
+                    <span style="font-size:14px; font-weight:bold; color:#495057; margin-right:5px;">📋 엑셀 견적서 입력</span>
+                    <button type="button" class="btn-preset" onclick="applyPreset('design')">설계 양식</button>
+                    <button type="button" class="btn-preset" onclick="applyPreset('sales')">영업 양식</button>
+                    <button type="button" class="btn-reset" onclick="resetExcelData()">초기화</button>
+                </div>
+                <div class="paste-wrapper" id="pasteWrapper">
+                    <textarea id="pasteCatcher" class="paste-catcher" placeholder=""></textarea>
+                    <div id="placeholderText" class="placeholder-text">
+                        <span style="font-size:24px; font-weight:bold;">Ctrl + V</span><br>
+                        엑셀 표를 여기에 붙여넣으세요
+                    </div>
+                    <table class="excel-view-table" id="excelViewTable" style="display:none;">
+                        <thead id="excelHead"></thead>
+                        <tbody id="excelBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="action-bar">
+            <span id="statusMsg" class="status-text">대기 중...</span>
+            <button class="btn-generate" onclick="generateAllCP()">전체 동 컷팅표 생성 ▶</button>
+        </div>
+    </div>
+
+    <!-- 2. 출력 탭 -->
+    <div id="output-tab" class="tab-content">
+        <div class="no-print" style="text-align: right; margin-bottom: 10px;">
+            <button class="btn-preset" onclick="switchMainTab('input')">◀ 입력 수정</button>
+            <button class="btn-preset" onclick="downloadExcel('current')" style="background:#28a745; color:white; border:none; margin-right:5px;">📗 현재 동 엑셀 저장</button>
+            <button class="btn-preset" onclick="downloadExcel('all')" style="background:#218838; color:white; border:none; margin-right:5px;">📚 전체 동 엑셀 저장</button>
+            <button class="btn-preset" onclick="window.print()" style="background:#007bff; color:white; border:none;">🖨 인쇄하기</button>
+        </div>
+        <div id="printArea"></div>
+    </div>
+</div>
+
+<script>
+    let dongData = { "1동": { gridData: [], colMapping: {}, resultBatches: [], selectedSpecs: null } };
+    let currentDong = "1동";
+    let isNoDongMode = false;
+    let globalExcelData = []; 
+
+    const today = new Date();
+    const formattedToday = today.getFullYear() + '.' + (today.getMonth()+1).toString().padStart(2,'0') + '.' + today.getDate().toString().padStart(2,'0');
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const catcher = document.getElementById('pasteCatcher');
+        if(catcher) {
+            catcher.addEventListener('paste', handlePaste);
+            catcher.addEventListener('focus', () => document.getElementById('pasteWrapper').style.borderColor = '#007bff');
+            catcher.addEventListener('blur', () => document.getElementById('pasteWrapper').style.borderColor = '#ced4da');
+        }
+        renderDongTabs();
+        loadDongData(currentDong);
+    });
+
+    // ... (기존 로직 유지) ...
+    function toggleNoDong() {
+        isNoDongMode = document.getElementById('checkNoDong').checked;
+        const dongTabs = document.getElementById('dongTabsContainer');
+        if (isNoDongMode) {
+            dongTabs.style.display = 'none';
+            if (!dongData["1동"]) dongData["1동"] = { gridData: [], colMapping: {}, resultBatches: [], selectedSpecs: null };
+            currentDong = "1동"; 
+            loadDongData("1동");
+        } else {
+            dongTabs.style.display = 'flex';
+            renderDongTabs();
+        }
+        if (document.getElementById('output-tab').classList.contains('active')) {
+            const batches = dongData[currentDong].resultBatches;
+            renderCP(batches);
+        }
+    }
+
+    function renderDongTabs() {
+        if (isNoDongMode) return;
+        const container = document.getElementById('dongTabsContainer');
+        container.innerHTML = '';
+        Object.keys(dongData).forEach(dongName => {
+            const tab = document.createElement('div');
+            tab.className = `dong-tab ${dongName === currentDong ? 'active' : ''}`;
+            tab.onclick = () => switchDong(dongName);
+            tab.ondblclick = () => renameDong(dongName);
+            tab.innerHTML = `<span>${dongName}</span>`;
+            if (Object.keys(dongData).length > 1) {
+                const closeBtn = document.createElement('span');
+                closeBtn.className = 'dong-close-btn';
+                closeBtn.innerText = '✕';
+                closeBtn.onclick = (e) => { e.stopPropagation(); deleteDong(dongName); };
+                tab.appendChild(closeBtn);
+            }
+            container.appendChild(tab);
+        });
+        const addBtn = document.createElement('button');
+        addBtn.className = 'dong-add-btn';
+        addBtn.innerText = '+ 동 추가';
+        addBtn.onclick = addNewDong;
+        container.appendChild(addBtn);
+    }
+
+    function switchDong(dongName) {
+        saveCurrentInputToMemory();
+        currentDong = dongName;
+        renderDongTabs();
+        if (document.getElementById('output-tab').classList.contains('active')) {
+            const batches = dongData[currentDong].resultBatches;
+            renderCP(batches); 
+        }
+        loadDongData(dongName);
+    }
+
+    function addNewDong() {
+        saveCurrentInputToMemory();
+        const newName = prompt("새 동 이름을 입력하세요:", (Object.keys(dongData).length + 1) + "동");
+        if (newName && !dongData[newName]) {
+            dongData[newName] = { gridData: [], colMapping: {}, resultBatches: [], selectedSpecs: null };
+            currentDong = newName;
+            renderDongTabs();
+            loadDongData(newName);
+        }
+    }
+
+    function renameDong(oldName) {
+        const newName = prompt("동 이름을 수정하세요:", oldName);
+        if (newName && newName !== oldName && !dongData[newName]) {
+            dongData[newName] = dongData[oldName];
+            delete dongData[oldName];
+            if (currentDong === oldName) currentDong = newName;
+            renderDongTabs();
+            if (document.getElementById('output-tab').classList.contains('active')) {
+                renderCP(dongData[currentDong].resultBatches);
+            }
+        }
+    }
+
+    function deleteDong(dongName) {
+        if (confirm(`'${dongName}'을 삭제하시겠습니까?`)) {
+            delete dongData[dongName];
+            if (currentDong === dongName) currentDong = Object.keys(dongData)[0];
+            renderDongTabs();
+            loadDongData(currentDong);
+        }
+    }
+
+    function saveCurrentInputToMemory() {
+        dongData[currentDong].gridData = [...globalExcelData];
+        const mapping = {};
+        document.querySelectorAll('.col-selector').forEach((sel, idx) => { mapping[idx] = sel.value; });
+        dongData[currentDong].colMapping = mapping;
+        const checkboxes = document.querySelectorAll('.spec-checkbox');
+        if (checkboxes.length > 0) {
+             dongData[currentDong].selectedSpecs = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
+        }
+    }
+
+    function loadDongData(dongName) {
+        const data = dongData[dongName];
+        globalExcelData = data.gridData || [];
+        const catcher = document.getElementById('pasteCatcher');
+        const placeholder = document.getElementById('placeholderText');
+        const table = document.getElementById('excelViewTable');
+
+        if (globalExcelData.length > 0) {
+            catcher.style.display = 'none'; placeholder.style.display = 'none'; table.style.display = 'table';
+            renderExcelView(globalExcelData);
+            const savedMapping = data.colMapping || {};
+            const selectors = document.querySelectorAll('.col-selector');
+            if (Object.keys(savedMapping).length > 0) {
+                selectors.forEach((sel, idx) => {
+                    if (savedMapping[idx]) { sel.value = savedMapping[idx]; highlightMapped(sel); }
+                });
+            } else { applyPreset('design'); }
+            updateSpecList(); 
+        } else {
+            catcher.style.display = 'block'; catcher.value = ''; placeholder.style.display = 'block'; table.style.display = 'none';
+            document.getElementById('excelHead').innerHTML = ''; document.getElementById('excelBody').innerHTML = '';
+            updateSpecList(); 
+        }
+    }
+
+    function switchMainTab(tabName) {
+        if (document.getElementById('input-tab').classList.contains('active')) {
+            saveCurrentInputToMemory();
+        }
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabName + '-tab').classList.add('active');
+        const index = tabName === 'input' ? 0 : 1;
+        document.querySelectorAll('.tab-btn')[index].classList.add('active');
+
+        if (tabName === 'output') {
+            const batches = dongData[currentDong].resultBatches;
+            renderCP(batches);
+        }
+    }
+
+    function handlePaste(e) {
+        e.preventDefault();
+        let data = (e.clipboardData || window.clipboardData).getData('text');
+        let rows = data.trim().split(/\r\n|\n/).map(row => row.split('\t'));
+        if (rows.length > 0) {
+            globalExcelData = rows;
+            dongData[currentDong].gridData = globalExcelData; 
+            renderExcelView(rows);
+            document.getElementById('pasteCatcher').style.display = 'none';
+            document.getElementById('placeholderText').style.display = 'none';
+            document.getElementById('excelViewTable').style.display = 'table';
+            applyPreset('design');
+        }
+    }
+
+    function renderExcelView(rows) {
+        const thead = document.getElementById('excelHead');
+        const tbody = document.getElementById('excelBody');
+        thead.innerHTML = ''; tbody.innerHTML = '';
+        const maxCols = Math.max(...rows.map(r => r.length));
+        let trHead = document.createElement('tr');
+        trHead.appendChild(document.createElement('th')).innerText = '#';
+        for (let i = 0; i < maxCols; i++) {
+            let th = document.createElement('th');
+            th.innerHTML = `<select id="col-${i}" class="col-selector" onchange="highlightMapped(this)"><option value="">- 무시 -</option><option value="width">가로</option><option value="height">세로</option><option value="thickness">두께</option><option value="length">📏 길이</option><option value="qty">🔢 수량</option><option value="marking">🏷️ 마킹</option></select>`;
+            trHead.appendChild(th);
+        }
+        thead.appendChild(trHead);
+        rows.forEach((row, rIdx) => {
+            let tr = document.createElement('tr');
+            let tdNum = document.createElement('td');
+            tdNum.style.textAlign='center'; tdNum.style.color='#adb5bd'; tdNum.innerText = rIdx + 1;
+            tr.appendChild(tdNum);
+            for (let cIdx = 0; cIdx < maxCols; cIdx++) {
+                let td = document.createElement('td');
+                let input = document.createElement('input');
+                input.type = "text"; input.className = "cell-input"; input.value = row[cIdx] || '';
+                input.oninput = function() { 
+                    if(!globalExcelData[rIdx]) globalExcelData[rIdx] = []; 
+                    globalExcelData[rIdx][cIdx] = this.value; 
+                    dongData[currentDong].gridData = globalExcelData; 
+                };
+                td.appendChild(input); tr.appendChild(td);
+            }
+            tbody.appendChild(tr);
+        });
+    }
+
+    function highlightMapped(select) {
+        select.classList.remove('mapped-blue', 'mapped-green', 'mapped-gray');
+        const val = select.value;
+        if (['length', 'qty'].includes(val)) select.classList.add('mapped-blue');
+        else if (['width', 'height', 'thickness'].includes(val)) select.classList.add('mapped-green');
+        else if (val !== '') select.classList.add('mapped-gray');
+        const idx = select.id.split('-')[1];
+        if(!dongData[currentDong].colMapping) dongData[currentDong].colMapping = {};
+        dongData[currentDong].colMapping[idx] = val;
+        updateSpecList();
+    }
+
+    function resetExcelData() {
+        globalExcelData = [];
+        dongData[currentDong].gridData = [];
+        dongData[currentDong].colMapping = {};
+        dongData[currentDong].selectedSpecs = null;
+        loadDongData(currentDong);
+    }
+
+    function applyPreset(type) {
+        if (globalExcelData.length === 0) return;
+        const selects = document.querySelectorAll('.col-selector');
+        selects.forEach(s => { s.value = ''; highlightMapped(s); });
+        const setCol = (idx, val) => { const el = document.getElementById(`col-${idx}`); if(el) { el.value = val; highlightMapped(el); } };
+        if (type === 'sales') { setCol(1, 'width'); setCol(2, 'height'); setCol(3, 'thickness'); setCol(4, 'length'); setCol(8, 'qty'); setCol(13, 'marking'); }
+        else if (type === 'design') { setCol(2, 'width'); setCol(3, 'height'); setCol(4, 'thickness'); setCol(5, 'length'); setCol(7, 'qty'); setCol(8, 'marking'); }
+    }
+
+    function parseDataFromMemory(dongName) {
+        const data = dongData[dongName];
+        const grid = data.gridData;
+        const mapping = data.colMapping;
+        if (!grid || grid.length === 0 || !mapping) return null;
+        const map = {};
+        for (const [idx, val] of Object.entries(mapping)) { if (val) map[val] = idx; }
+        if (map.length === undefined || map.qty === undefined) return null;
+        let parsedItems = [];
+        for (let i = 0; i < grid.length; i++) {
+            const row = grid[i];
+            const getVal = (idx) => (row[idx] !== undefined) ? String(row[idx]).trim().replace(/,/g, '') : '';
+            let len = parseFloat(getVal(map.length));
+            const qty = parseFloat(getVal(map.qty));
+            if (isNaN(len) || isNaN(qty) || qty <= 0) continue;
+            if (len < 20) len = Math.round(len * 1000); else len = Math.round(len);
+            if (len >= 2000) continue;
+            let thickness = map.thickness !== undefined ? getVal(map.thickness) : '2.1';
+            let width = map.width !== undefined ? getVal(map.width) : '100';
+            let height = map.height !== undefined ? getVal(map.height) : '100';
+            parsedItems.push({ thickness, width, height, length: len, qty: qty, marking: map.marking !== undefined ? getVal(map.marking) : '' });
+        }
+        return parsedItems;
+    }
+
+    function updateSpecList() {
+        const items = parseDataFromMemory(currentDong);
+        const container = document.getElementById('specList');
+        const box = document.getElementById('specBox');
+        if (!items || items.length === 0) { box.style.display = 'none'; container.innerHTML = ''; return; }
+        box.style.display = 'block'; 
+        const specCounts = {};
+        items.forEach(item => { const key = `${item.width}*${item.height}*${item.thickness}`; if(!specCounts[key]) specCounts[key] = 0; specCounts[key] += item.qty; });
+        const savedSpecs = dongData[currentDong].selectedSpecs;
+        container.innerHTML = '';
+        Object.keys(specCounts).sort().forEach(key => {
+            const isChecked = savedSpecs ? savedSpecs.includes(key) : true;
+            const div = document.createElement('div');
+            div.className = 'spec-item';
+            div.innerHTML = `<label><input type="checkbox" class="spec-checkbox" value="${key}" ${isChecked ? 'checked' : ''}>${key}</label><span class="spec-count">${specCounts[key]}ea</span>`;
+            container.appendChild(div);
+        });
+    }
+
+    async function generateAllCP() {
+        saveCurrentInputToMemory(); 
+        const statusEl = document.getElementById('statusMsg');
+        const dongsToProcess = Object.keys(dongData);
+        let processedCount = 0;
+
+        for (const dName of dongsToProcess) {
+            let allItems = parseDataFromMemory(dName);
+            if (!allItems || allItems.length === 0) { dongData[dName].resultBatches = []; continue; }
+            const savedSpecs = dongData[dName].selectedSpecs;
+            if (savedSpecs !== null) {
+                allItems = allItems.filter(item => { const key = `${item.width}*${item.height}*${item.thickness}`; return savedSpecs.includes(key); });
+            }
+            if (allItems.length === 0) { dongData[dName].resultBatches = []; continue; }
+            statusEl.innerText = `[${dName}] 분석 중...`;
+            await new Promise(r => setTimeout(r, 10)); 
+            const result = await runSimulationForItems(allItems);
+            dongData[dName].resultBatches = result;
+            processedCount++;
+        }
+        statusEl.innerText = "완료!";
+        setTimeout(() => statusEl.innerText = "", 2000);
+        if (processedCount > 0) { switchMainTab('output'); } 
+        else { alert("입력된 데이터가 없거나 유효하지 않습니다."); }
+    }
+
+    async function runSimulationForItems(rawItems) {
+        let flatItems = []; let specs = {};
+        rawItems.forEach(item => {
+            const specKey = `${item.thickness}|${item.width}|${item.height}`;
+            if (!specs[specKey]) specs[specKey] = { thickness: item.thickness, width: item.width, height: item.height };
+            for(let q=0; q<item.qty; q++) flatItems.push({ specKey, length: item.length, marking: item.marking });
+        });
+        const distinctMarkingsCount = new Set(flatItems.map(i => i.marking)).size;
+        const SIMULATION_RUNS = 200; 
+        let bestBatches = null; let bestScore = -Infinity;
+
+        for (let i = 0; i < SIMULATION_RUNS; i++) {
+            let currentItems = [...flatItems];
+            const strategyIdx = i % 5;
+            if (strategyIdx === 0) currentItems.sort((a, b) => b.length - a.length);
+            else if (strategyIdx === 1) currentItems.sort((a, b) => a.marking.localeCompare(b.marking) || b.length - a.length);
+            else if (strategyIdx === 2) currentItems.sort((a, b) => a.marking.localeCompare(b.marking) || a.length - b.length);
+            else if (strategyIdx === 3) currentItems.sort((a, b) => a.length - b.length);
+            else currentItems.sort(() => Math.random() - 0.5);
+
+            let groupedQueue = {};
+            currentItems.forEach(item => { if(!groupedQueue[item.specKey]) groupedQueue[item.specKey] = []; groupedQueue[item.specKey].push(item); });
+            const batches = executeCoreLogic(groupedQueue, specs, i);
+            const score = calculateScore(batches, distinctMarkingsCount);
+            if (score > bestScore) { bestScore = score; bestBatches = batches; }
+        }
+        if (bestBatches) {
+            bestBatches.sort((a, b) => {
+                const minLenA = a.items.length > 0 ? a.items[0].length : Infinity;
+                const minLenB = b.items.length > 0 ? b.items[0].length : Infinity;
+                return minLenA - minLenB;
+            });
+            bestBatches.forEach((b, idx) => b.seq = idx + 1);
+        }
+        return bestBatches || [];
+    }
+
+    function executeCoreLogic(itemsBySpec, specs, seed) {
+        let iterationBatches = [];
+        for(const sKey in itemsBySpec) {
+            let specItems = itemsBySpec[sKey]; let specObj = specs[sKey];
+            let itemsByMarking = {};
+            specItems.forEach(it => { if(!itemsByMarking[it.marking]) itemsByMarking[it.marking] = []; itemsByMarking[it.marking].push(it); });
+            let leftovers = [];
+            for(const marking in itemsByMarking) {
+                let group = itemsByMarking[marking]; let bestCut = 0;
+                const itemLen = group[0].length; const totalQty = group.length;
+                for(let cuts = 7; cuts >= 2; cuts--) {
+                    const totalLen = itemLen * cuts;
+                    if(totalLen >= 2000 && totalLen < 6000) { if (totalQty % cuts === 0) { bestCut = cuts; break; } }
+                }
+                if (bestCut > 0) {
+                    const pipeQty = totalQty / bestCut;
+                    iterationBatches.push({ seq: 0, spec: specObj, items: [{ length: itemLen, marking: marking, count: bestCut }], qty: pipeQty, sig: `DIVISOR_${marking}` });
+                } else {
+                    let remainingInGroup = [...group];
+                    while(remainingInGroup.length > 0) {
+                        let currentPipe = []; let currentLen = 0; let nextRound = [];
+                        for(let item of remainingInGroup) {
+                            const limitCuts = (item.length < 500) ? 8 : 5;
+                            const isEnough = currentLen >= 2000;
+                            if(currentLen + item.length < 6000) {
+                                if(isEnough && currentPipe.length >= limitCuts) { nextRound.push(item); continue; }
+                                currentPipe.push(item); currentLen += item.length;
+                            } else { nextRound.push(item); }
+                        }
+                        if (currentLen >= 2000) { iterationBatches.push({ seq: 0, spec: specObj, items: summarizePipeContent(currentPipe), qty: 1, sig: `PURE_${marking}_${Math.random()}` }); }
+                        else { leftovers.push(...currentPipe); }
+                        remainingInGroup = nextRound;
+                        if(currentPipe.length === 0 && remainingInGroup.length > 0) { leftovers.push(...remainingInGroup); break; }
+                    }
+                }
+            }
+            if (leftovers.length > 0) {
+                if (seed % 2 === 0) leftovers.sort((a,b) => b.length - a.length); else leftovers.sort(() => Math.random() - 0.5);
+                let remainingLeftovers = [...leftovers];
+                while(remainingLeftovers.length > 0) {
+                    let currentPipe = []; let currentLen = 0; let nextRound = [];
+                    for(let item of remainingLeftovers) {
+                        if(currentLen + item.length < 6000) {
+                            if(currentLen >= 2000) { nextRound.push(item); continue; }
+                            currentPipe.push(item); currentLen += item.length;
+                        } else { nextRound.push(item); }
+                    }
+                    if (currentLen >= 2000) { iterationBatches.push({ seq: 0, spec: specObj, items: summarizePipeContent(currentPipe), qty: 1, sig: `MIXED_${Math.random()}` }); }
+                    else { injectLeftoversToBatches(currentPipe, iterationBatches, specObj); }
+                    remainingLeftovers = nextRound;
+                    if(currentPipe.length === 0 && remainingLeftovers.length > 0) { injectLeftoversToBatches(remainingLeftovers, iterationBatches, specObj); break; }
+                }
+            }
+        }
+        return compressBatches(iterationBatches);
+    }
+    function injectLeftoversToBatches(leftoverItems, batches, spec) {
+        for (let item of leftoverItems) {
+            let inserted = false;
+            for (let batch of batches) {
+                if (batch.spec.thickness !== spec.thickness || batch.spec.width !== spec.width) continue;
+                let currentLen = batch.items.reduce((sum, it) => sum + (it.length * it.count), 0);
+                if (currentLen + item.length < 6000) {
+                    if (batch.items.some(it => it.marking === item.marking)) { addItemToBatchSummary(batch, item); inserted = true; break; }
+                }
+            }
+            if (!inserted) {
+                for (let batch of batches) {
+                    if (batch.spec.thickness !== spec.thickness || batch.spec.width !== spec.width) continue;
+                    let currentLen = batch.items.reduce((sum, it) => sum + (it.length * it.count), 0);
+                    if (currentLen + item.length < 6000) { addItemToBatchSummary(batch, item); inserted = true; break; }
+                }
+            }
+            if (!inserted) { batches.push({ seq: 0, spec: spec, items: [{ length: item.length, marking: item.marking, count: 1 }], qty: 1, sig: `LEFTOVER_${Math.random()}` }); }
+        }
+    }
+    function addItemToBatchSummary(batch, item) {
+        const existing = batch.items.find(it => it.length === item.length && it.marking === item.marking);
+        if (existing) existing.count++;
+        else { batch.items.push({ length: item.length, marking: item.marking, count: 1 }); batch.items.sort((a,b) => a.length - b.length); }
+    }
+    function compressBatches(batches) {
+        const finalBatches = [];
+        batches.forEach(p => {
+            const sortedItems = [...p.items].sort((a,b) => a.length - b.length || a.marking.localeCompare(b.marking));
+            const contentStr = sortedItems.map(it => `${it.length}_${it.marking}_${it.count}`).join('|');
+            p.sig = `${p.spec.width}_${p.spec.height}_${p.spec.thickness}__${contentStr}`;
+        });
+        batches.sort((a, b) => a.sig.localeCompare(b.sig));
+        let currentBatch = null;
+        batches.forEach(pipe => {
+            if (currentBatch && currentBatch.sig === pipe.sig) { currentBatch.qty += pipe.qty; }
+            else { if (currentBatch) finalBatches.push(currentBatch); currentBatch = { seq: 0, spec: pipe.spec, items: JSON.parse(JSON.stringify(pipe.items)), qty: pipe.qty, sig: pipe.sig }; }
+        });
+        if (currentBatch) finalBatches.push(currentBatch);
+        return finalBatches;
+    }
+    function summarizePipeContent(pipeItems) {
+        const map = new Map();
+        pipeItems.forEach(it => { const key = `${it.length}_${it.marking}`; if(!map.has(key)) map.set(key, { length: it.length, marking: it.marking, count: 0 }); map.get(key).count++; });
+        return Array.from(map.values()).sort((a,b) => a.length - b.length);
+    }
+    function calculateScore(batches, totalDistinctMarkings) {
+        let score = 0;
+        if (batches.length > totalDistinctMarkings) score -= (batches.length - totalDistinctMarkings) * 500000; else score += 1000000; 
+        batches.forEach(batch => {
+            const cuts = batch.items.reduce((s,i)=>s+i.count,0);
+            const markings = new Set(batch.items.map(i=>i.marking));
+            if (markings.size === 1) score += 5000; 
+            else { score -= 100000; if (cuts > 5) score -= (cuts-5) * 1000; }
+        });
+        return score;
+    }
+
+    function renderCP(batches) {
+        const printArea = document.getElementById('printArea');
+        printArea.innerHTML = ''; 
+        if (!batches || batches.length === 0) {
+            printArea.innerHTML = '<div style="text-align:center; padding:50px; color:#999;">결과가 없습니다.</div>'; return;
+        }
+        const groups = {};
+        batches.forEach(b => {
+            const key = `${b.spec.width}*${b.spec.height}*${b.spec.thickness}`;
+            if(!groups[key]) groups[key] = { spec: b.spec, batches: [] };
+            groups[key].batches.push(b);
+        });
+        const keys = Object.keys(groups).sort(); 
+        const tabsContainer = document.createElement('div');
+        tabsContainer.className = 'spec-tabs no-print';
+        printArea.appendChild(tabsContainer);
+        const contentContainer = document.createElement('div');
+        printArea.appendChild(contentContainer);
+
+        const comp = document.getElementById('inputCompany').value.trim();
+        const site = document.getElementById('inputSite').value.trim();
+        let baseTitle = "업체명(현장명)";
+        if (comp || site) baseTitle = `${comp}${site ? '(' + site + ')' : ''}`;
+        if (!isNoDongMode) baseTitle += ` - ${currentDong}`;
+        const isBanding = document.getElementById('checkBanding').checked;
+
+        keys.forEach((key, idx) => {
+            const group = groups[key];
+            const spec = group.spec;
+            const groupBatches = group.batches;
+
+            const tabBtn = document.createElement('button');
+            tabBtn.className = `spec-tab-btn ${idx === 0 ? 'active' : ''}`;
+            tabBtn.innerText = key;
+            tabBtn.onclick = () => switchSpecTab(idx);
+            tabsContainer.appendChild(tabBtn);
+
+            const contentDiv = document.createElement('div');
+            contentDiv.id = `spec-content-${idx}`;
+            contentDiv.className = `spec-content ${idx === 0 ? 'active' : ''}`;
+            if (idx > 0) contentDiv.classList.add('page-break'); 
+
+            let displayTitle = baseTitle;
+            const is100x100 = (spec.width == '100' && spec.height == '100');
+            if (!is100x100) displayTitle += ` <span style="color:red; font-size:0.8em;">${spec.width}*${spec.height}</span>`;
+
+            let tbody = '';
+            let totalRaw = 0;
+            let totalCut = 0;
+
+            groupBatches.forEach(batch => {
+                const totalUsedLength = batch.items.reduce((sum, it) => sum + (it.length * it.count), 0);
+                const cutsPerPipe = batch.items.reduce((sum, it) => sum + it.count, 0);
+                const bladeLoss = Math.round(cutsPerPipe * 2.6);
+                const preHoleId = `prehole-${batch.seq}`; const lossId = `loss-${batch.seq}`; const totalId = `total-${batch.seq}`;
+
+                const lengthsHtml = batch.items.map(it => `<div class="split-cell">${it.length}</div>`).join('');
+                const cutsHtml = batch.items.map(it => `<div class="split-cell">${it.count}</div>`).join('');
+                const qtyHtml = batch.items.map(it => `<div class="split-cell">${it.count}</div>`).join('');
+                const markingHtml = batch.items.map(it => `<div class="split-cell">${it.marking}</div>`).join('');
+                const hVal = (spec.height == '50') ? '<span style="color:red; font-weight:bold;">50</span>' : spec.height;
+
+                tbody += `<tr>
+                    <td>${batch.seq}</td><td>${spec.thickness}</td><td>${spec.width}</td><td>${hVal}</td>
+                    <td><input type="number" class="input-hole" id="${preHoleId}" oninput="calcLoss('${batch.seq}')"></td>
+                    <td style="background:#fff0f6; font-weight:bold; color:#d63384;">${Math.round(batch.qty * 100)/100}</td>
+                    <td>${lengthsHtml}</td><td>${cutsHtml}</td><td>${qtyHtml}</td><td>${markingHtml}</td>
+                    <td id="${totalId}" data-val="${totalUsedLength}">${totalUsedLength.toLocaleString()}</td>
+                    <td id="${lossId}">- ${totalUsedLength.toLocaleString()}</td><td>${bladeLoss}</td>
+                    <td><input type="text" class="input-hole" style="width:100%"></td>
+                </tr>`;
+                totalRaw += batch.qty; totalCut += (cutsPerPipe * batch.qty);
+            });
+            const totalRow = `<tr class="total-row"><td colspan="3">합 계</td><td></td><td></td><td style="color:#d63384;">${Math.round(totalRaw*100)/100}</td><td colspan="2">총 생산수량</td><td>${Math.round(totalCut)}</td><td></td><td></td><td></td><td></td><td></td></tr>`;
+            contentDiv.innerHTML = `<div class="cp-header"><div class="company-name">${displayTitle}</div><div class="date-section">날짜: <span>${formattedToday}</span><br>담당자: <input type="text" style="border:none; border-bottom:1px solid #000; width:100px; text-align:center;"></div></div><div class="warning-text" style="display: ${isBanding ? 'block' : 'none'}">철밴딩에 동표시 해주세요</div><table class="cp-table"><colgroup><col style="width: 50px;"><col style="width: 60px;"><col style="width: 60px;"><col style="width: 60px;"><col style="width: 100px;"><col style="width: 50px;"><col style="width: 80px;"><col style="width: 60px;"><col style="width: 50px;"><col style="width: 80px;"><col style="width: 80px;"><col style="width: 80px;"><col style="width: 60px;"><col></colgroup><thead><tr><th>순번</th><th>두께</th><th>장변</th><th>단변</th><th>선타공길이</th><th>수량</th><th>단척길이</th><th>컷팅 수</th><th>수량</th><th>마킹</th><th>합계</th><th>로스</th><th>컷팅날</th><th>비고</th></tr></thead><tbody>${tbody}${totalRow}</tbody></table>`;
+            contentContainer.appendChild(contentDiv);
+        });
+    }
+
+    // --- [EXCELJS] Download Function ---
+    async function downloadExcel(mode) {
+        const dongList = mode === 'all' ? Object.keys(dongData) : [currentDong];
+        if (dongList.length === 0) { alert("저장할 데이터가 없습니다."); return; }
+
+        for (const dName of dongList) {
+            const batches = dongData[dName].resultBatches;
+            if (!batches || batches.length === 0) continue;
+
+            const groups = {};
+            batches.forEach(b => {
+                const key = `${b.spec.width}*${b.spec.height}*${b.spec.thickness}`;
+                if(!groups[key]) groups[key] = { spec: b.spec, batches: [] };
+                groups[key].batches.push(b);
+            });
+
+            for (const key of Object.keys(groups)) {
+                const group = groups[key];
+                const spec = group.spec;
+                const groupBatches = group.batches;
+
+                // Create Workbook
+                const workbook = new ExcelJS.Workbook();
+                const sheet = workbook.addWorksheet('Sheet1', {
+                    pageSetup: { 
+                        paperSize: 9, // A4
+                        orientation: 'landscape', 
+                        fitToPage: true, 
+                        fitToWidth: 1, 
+                        fitToHeight: 0 // Auto height
+                    }
+                });
+
+                // --- Styles ---
+                const borderStyle = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                const alignCenter = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                const headerFill = { type: 'pattern', pattern:'solid', fgColor:{argb:'FFFFE699'} };
+                const totalFill = { type: 'pattern', pattern:'solid', fgColor:{argb:'FFFFFFCC'} };
+
+                // Title Construction
+                const comp = document.getElementById('inputCompany').value.trim() || '업체명';
+                const site = document.getElementById('inputSite').value.trim() || '현장명';
+                let title = `${comp}(${site})`;
+                if (!isNoDongMode) title += ` - ${dName}`;
+                
+                const is100x100 = (spec.width == '100' && spec.height == '100');
+                let displayTitle = title;
+                if (!is100x100) displayTitle += ` ${spec.width}*${spec.height}`;
+
+                // Row 1: Title
+                sheet.mergeCells('A1:N1');
+                const titleCell = sheet.getCell('A1');
+                titleCell.value = displayTitle;
+                titleCell.font = { name: 'Malgun Gothic', size: 16, bold: true };
+
+                // Row 3: Warning
+                if (document.getElementById('checkBanding').checked) {
+                    sheet.mergeCells('A3:F3');
+                    const warnCell = sheet.getCell('A3');
+                    warnCell.value = "철밴딩에 동표시 해주세요";
+                    warnCell.font = { name: 'Malgun Gothic', size: 12, bold: true, color: { argb: 'FFFF0000' } };
+                }
+
+                // Row 4: Header
+                const headers = ["순번", "두께", "장변", "단변", "선타공길이", "수량", "단척길이", "컷팅 수", "수량", "마킹", "합계", "로스", "컷팅날", "비고"];
+                const headerRow = sheet.getRow(4);
+                headerRow.values = headers;
+                headerRow.height = 30;
+                headerRow.eachCell((cell) => {
+                    cell.fill = headerFill;
+                    cell.font = { name: 'Malgun Gothic', size: 11, bold: true };
+                    cell.alignment = alignCenter;
+                    cell.border = borderStyle;
+                });
+
+                // Data Rows
+                let currentRow = 5;
+                let totalRaw = 0;
+                let totalCut = 0;
+
+                groupBatches.forEach(batch => {
+                    const rowsInBatch = batch.items.length;
+                    const totalUsed = batch.items.reduce((s, it) => s + (it.length * it.count), 0);
+                    const cuts = batch.items.reduce((s, it) => s + it.count, 0);
+                    const bladeLoss = Math.round(cuts * 2.6);
+                    totalRaw += batch.qty;
+                    totalCut += (cuts * batch.qty);
+
+                    const startRow = currentRow;
+
+                    batch.items.forEach((item, idx) => {
+                        const row = sheet.getRow(currentRow);
+                        row.height = 28;
+                        
+                        // Basic Columns
+                        row.getCell(7).value = item.length; // G
+                        row.getCell(8).value = item.count;  // H
+                        row.getCell(9).value = item.count;  // I
+                        row.getCell(10).value = item.marking; // J
+
+                        if (idx === 0) {
+                            row.getCell(1).value = batch.seq; 
+                            row.getCell(2).value = spec.thickness;
+                            row.getCell(3).value = spec.width;
+                            row.getCell(4).value = spec.height;
+                            if (spec.height == '50') row.getCell(4).font = { color: { argb: 'FFFF0000' }, bold: true };
+                            
+                            // Prehole (User Input)
+                            // row.getCell(5).value = ""; // Empty
+
+                            // Qty
+                            row.getCell(6).value = Math.round(batch.qty*100)/100;
+                            row.getCell(6).font = { bold: true };
+
+                            // Results
+                            row.getCell(11).value = totalUsed; // K
+                            // Formula: =E{row} - K{row}
+                            // ExcelJS uses 1-based index
+                            row.getCell(12).value = { formula: `E${currentRow}-K${currentRow}`, result: -totalUsed }; 
+                            row.getCell(13).value = bladeLoss;
+                        }
+
+                        // Apply Styles
+                        for(let c=1; c<=14; c++) {
+                            const cell = row.getCell(c);
+                            cell.border = borderStyle;
+                            cell.alignment = alignCenter;
+                            cell.font = cell.font || { name: 'Malgun Gothic', size: 11 };
+                        }
+                        currentRow++;
+                    });
+
+                    // Merge Cells
+                    if (rowsInBatch > 1) {
+                        const endRow = currentRow - 1;
+                        ['A','B','C','D','E','F','K','L','M','N'].forEach(col => {
+                            sheet.mergeCells(`${col}${startRow}:${col}${endRow}`);
+                        });
+                    }
+                });
+
+                // Add Conditional Formatting for Loss Column (L)
+                // Range: L5 : L{currentRow-1}
+                if (currentRow > 5) {
+                    sheet.addConditionalFormatting({
+                        ref: `L5:L${currentRow-1}`,
+                        rules: [
+                            {
+                                type: 'cellIs',
+                                operator: 'lessThan',
+                                formulae: ['0'],
+                                style: { font: { color: { argb: 'FFFF0000' } } }
+                            },
+                            {
+                                type: 'cellIs',
+                                operator: 'greaterThan',
+                                formulae: ['6000'],
+                                style: { font: { color: { argb: 'FFFF0000' } } }
+                            }
+                        ]
+                    });
+                }
+
+                // Total Row
+                const totalRow = sheet.getRow(currentRow);
+                totalRow.height = 30;
+                sheet.mergeCells(`A${currentRow}:E${currentRow}`);
+                sheet.getCell(`A${currentRow}`).value = "합계";
+                
+                sheet.getCell(`F${currentRow}`).value = Math.round(totalRaw*100)/100;
+                sheet.getCell(`F${currentRow}`).font = { color: { argb: 'FFD63384' }, bold: true };
+                
+                sheet.mergeCells(`G${currentRow}:H${currentRow}`);
+                sheet.getCell(`G${currentRow}`).value = "총 생산수량";
+                
+                sheet.getCell(`I${currentRow}`).value = Math.round(totalCut);
+
+                // Apply Total Styles
+                for(let c=1; c<=14; c++) {
+                    const cell = totalRow.getCell(c);
+                    cell.fill = totalFill;
+                    cell.border = borderStyle;
+                    cell.alignment = alignCenter;
+                    if (!cell.font) cell.font = { name: 'Malgun Gothic', size: 11, bold: true };
+                }
+
+                // Column Widths
+                sheet.columns = [
+                    { width: 8 }, { width: 8 }, { width: 8 }, { width: 8 }, 
+                    { width: 15 }, { width: 8 }, 
+                    { width: 12 }, { width: 10 }, { width: 8 }, { width: 15 }, 
+                    { width: 12 }, { width: 12 }, { width: 10 }, { width: 20 } 
+                ];
+
+                // Filename
+                let filename = title;
+                if (!is100x100) filename += ` ${spec.width}x${spec.height}`;
+                
+                // 2.1t check (Strict)
+                const tVal = parseFloat(String(spec.thickness).replace(/[^0-9.]/g, ''));
+                // 2.1 or 2.10 -> omit. 2.3 -> append.
+                if (Math.abs(tVal - 2.1) > 0.001) filename += ` ${spec.thickness}t`;
+                
+                filename += ".xlsx";
+
+                // Save
+                const buffer = await workbook.xlsx.writeBuffer();
+                saveAs(new Blob([buffer]), filename);
+            }
+        }
+    }
+
+    window.switchSpecTab = function(idx) {
+        document.querySelectorAll('.spec-tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.spec-content').forEach(c => c.classList.remove('active'));
+        
+        const buttons = document.querySelectorAll('.spec-tab-btn');
+        if(buttons[idx]) buttons[idx].classList.add('active');
+        
+        const content = document.getElementById(`spec-content-${idx}`);
+        if(content) content.classList.add('active');
+    }
+
+    window.calcLoss = function(seq) {
+        const preHoleInput = document.getElementById(`prehole-${seq}`);
+        const totalEl = document.getElementById(`total-${seq}`);
+        const lossEl = document.getElementById(`loss-${seq}`);
+        const preHole = parseFloat(preHoleInput.value) || 0;
+        const total = parseFloat(totalEl.getAttribute('data-val')) || 0;
+        const loss = preHole - total;
+        lossEl.innerText = loss.toLocaleString();
+    };
+</script>
+
+</body>
+</html>
