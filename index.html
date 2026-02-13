@@ -263,7 +263,7 @@
                         if(isNaN(qty) || qty < 1) qty = 1;
 
                         let totalLength = validCuts.reduce((sum, c) => sum + (parseFloat(c.l) * parseInt(c.count)), 0);
-                        validCuts.sort((a,b) => parseFloat(a.l) - parseFloat(b.l));
+                        // 정렬 로직 제거: 사용자가 입력한 순서 그대로 출력
                         
                         resultsBySpec[specKey].push({
                             thick: parseFloat(row.t), width: parseInt(row.w), height: parseInt(row.h),
@@ -273,7 +273,7 @@
                     });
                 });
 
-                Object.values(resultsBySpec).forEach(patterns => patterns.sort((a,b) => b.totalLength - a.totalLength));
+                // 결과 배열 정렬 제거: 입력한 순서 그대로 유지
                 updateCurrentData({ cpResult: resultsBySpec });
                 setViewMode('result');
             };
