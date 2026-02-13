@@ -25,7 +25,7 @@
         .excel-table th { background-color: #ffe699; font-weight: bold; border-bottom: 2px solid #000; }
         
         /* 입력 셀 스타일 */
-        .input-cell { width: 100%; height: 100%; min-height: 24px; border: none; background: transparent; text-align: center; outline: none; font-size: 13px; }
+        .input-cell { width: 100%; height: 100%; min-height: 24px; border: none; background: transparent; text-align: center; outline: none; font-size: 13px; cursor: text; }
         .input-cell:focus { background-color: #e0f2fe; box-shadow: inset 0 0 0 2px #3b82f6; z-index: 10; position: relative; }
         
         /* 2000 미만 경고 스타일 */
@@ -33,7 +33,7 @@
         
         .spec-title { font-size: 1.25rem; font-weight: bold; color: #1e3a8a; margin-bottom: 8px; border-left: 4px solid #1e3a8a; padding-left: 10px; }
         
-        .drag-handle { cursor: grab; color: #adb5bd; }
+        .drag-handle { cursor: grab; color: #adb5bd; touch-action: none; }
         .drag-handle:active { cursor: grabbing; color: #495057; }
         
         .excel-input-cell { width:100%; height:100%; border:none; text-align:center; outline:none; background:transparent; font-size:12px; }
@@ -259,12 +259,15 @@
                         let validCuts = row.cuts.filter(c => c.l && c.count);
                         if(validCuts.length === 0) return;
                         
+                        let qty = parseInt(row.qty || 1);
+                        if(isNaN(qty) || qty < 1) qty = 1;
+
                         let totalLength = validCuts.reduce((sum, c) => sum + (parseFloat(c.l) * parseInt(c.count)), 0);
                         validCuts.sort((a,b) => parseFloat(a.l) - parseFloat(b.l));
                         
                         resultsBySpec[specKey].push({
                             thick: parseFloat(row.t), width: parseInt(row.w), height: parseInt(row.h),
-                            count: parseInt(row.qty), totalLength: totalLength,
+                            count: qty, totalLength: totalLength,
                             groups: validCuts.map(c => ({ length: parseFloat(c.l), cutCount: parseInt(c.count), marking: c.marking || '' }))
                         });
                     });
@@ -445,6 +448,8 @@
                 } catch(e) { alert("엑셀 저장 중 오류 발생: " + e.message); }
             };
 
+            const hasResults = currentData.cpResult && Object.values(currentData.cpResult).some(p => p.length > 0);
+
             return (
                 <div className="flex h-screen overflow-hidden text-gray-800">
                     <div className="w-[280px] bg-white border-r border-gray-200 flex flex-col z-10 shadow">
@@ -612,26 +617,34 @@
                                                         else if (rowSum >= 2000) sumBgColor = 'bg-green-100 text-green-700 font-bold';
                                                         
                                                         return row.cuts.map((cut, cIdx) => (
-                                                            <tr key={`${row.id}-${cIdx}`} draggable={cIdx === 0} onDragStart={(e) => handleDragStart(e, rIdx)} onDragEnter={(e) => handleDragEnter(e, rIdx)} onDragEnd={handleDragEnd} onDragOver={(e) => e.preventDefault()} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                                                            <tr 
+                                                                key={`${row.id}-${cIdx}`} 
+                                                                onDragEnter={(e) => handleDragEnter(e, rIdx)} 
+                                                                onDragOver={(e) => e.preventDefault()} 
+                                                                className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
+                                                            >
                                                                 {cIdx === 0 && (
                                                                     <>
                                                                         <td rowSpan={8} className="border bg-gray-50">
                                                                             <div className="flex flex-col items-center justify-center gap-2 p-1">
-                                                                                <div className="drag-handle p-1" title="드래그해서 순서 이동"><DragIcon /></div>
+                                                                                <div 
+                                                                                    className="drag-handle p-1 cursor-grab active:cursor-grabbing" 
+                                                                                    title="드래그해서 순서 이동"
+                                                                                    draggable={true}
+                                                                                    onDragStart={(e) => handleDragStart(e, rIdx)}
+                                                                                    onDragEnd={handleDragEnd}
+                                                                                >
+                                                                                    <DragIcon />
+                                                                                </div>
                                                                                 <button onClick={() => { const newRows = currentData.manualRows[currentData.currentManualSpec].filter((_, i) => i !== rIdx); updateCurrentData({manualRows: {...currentData.manualRows, [currentData.currentManualSpec]: newRows}}); }} className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"><Trash2 /></button>
                                                                             </div>
                                                                         </td>
-                                                                        {/* Col 0: T */}
                                                                         <td rowSpan={8} className="border"><input id={`cell-${rIdx * 8}-0`} onKeyDown={(e) => handleCellKeyDown(e, rIdx * 8, 0)} className="input-cell bg-yellow-50" value={row.t} onChange={e => { const n = [...currentData.manualRows[currentData.currentManualSpec]]; n[rIdx].t = e.target.value; updateCurrentData({manualRows: {...currentData.manualRows, [currentData.currentManualSpec]: n}}); }} /></td>
-                                                                        {/* Col 1: W */}
                                                                         <td rowSpan={8} className="border"><input id={`cell-${rIdx * 8}-1`} onKeyDown={(e) => handleCellKeyDown(e, rIdx * 8, 1)} className="input-cell bg-yellow-50" value={row.w} onChange={e => { const n = [...currentData.manualRows[currentData.currentManualSpec]]; n[rIdx].w = e.target.value; updateCurrentData({manualRows: {...currentData.manualRows, [currentData.currentManualSpec]: n}}); }} /></td>
-                                                                        {/* Col 2: H */}
                                                                         <td rowSpan={8} className="border"><input id={`cell-${rIdx * 8}-2`} onKeyDown={(e) => handleCellKeyDown(e, rIdx * 8, 2)} className="input-cell bg-yellow-50" value={row.h} onChange={e => { const n = [...currentData.manualRows[currentData.currentManualSpec]]; n[rIdx].h = e.target.value; updateCurrentData({manualRows: {...currentData.manualRows, [currentData.currentManualSpec]: n}}); }} /></td>
-                                                                        {/* Col 3: Qty */}
                                                                         <td rowSpan={8} className="border"><input id={`cell-${rIdx * 8}-3`} onKeyDown={(e) => handleCellKeyDown(e, rIdx * 8, 3)} type="number" className="input-cell bg-yellow-50 font-bold text-lg text-yellow-900" value={row.qty} onChange={e => { const n = [...currentData.manualRows[currentData.currentManualSpec]]; n[rIdx].qty = e.target.value; updateCurrentData({manualRows: {...currentData.manualRows, [currentData.currentManualSpec]: n}}); }} /></td>
                                                                     </>
                                                                 )}
-                                                                {/* Col 4: Length */}
                                                                 <td className="border p-0">
                                                                     <input 
                                                                         id={`cell-${rIdx * 8 + cIdx}-4`}
@@ -643,7 +656,6 @@
                                                                         onChange={e => { const n = [...currentData.manualRows[currentData.currentManualSpec]]; n[rIdx].cuts[cIdx].l = e.target.value; updateCurrentData({manualRows: {...currentData.manualRows, [currentData.currentManualSpec]: n}}); }} 
                                                                     />
                                                                 </td>
-                                                                {/* Col 5: Count */}
                                                                 <td className="border p-0">
                                                                     <input 
                                                                         id={`cell-${rIdx * 8 + cIdx}-5`}
@@ -655,7 +667,6 @@
                                                                         onChange={e => { const n = [...currentData.manualRows[currentData.currentManualSpec]]; n[rIdx].cuts[cIdx].count = e.target.value; updateCurrentData({manualRows: {...currentData.manualRows, [currentData.currentManualSpec]: n}}); }} 
                                                                     />
                                                                 </td>
-                                                                {/* Col 6: Marking */}
                                                                 <td className="border p-0">
                                                                     <input 
                                                                         id={`cell-${rIdx * 8 + cIdx}-6`}
@@ -701,7 +712,7 @@
                                         <div className="flex-1 overflow-auto custom-scrollbar p-0">
                                             <table className="w-full text-xs text-center border-collapse">
                                                 <thead className="sticky top-0 bg-white shadow-sm">
-                                                    <tr className="bg-gray-100 border-b"><th className="p-2">규격</th><th className="p-2">길이</th><th className="p-2">필요</th><th className="p-2">사용</th><th className="p-2">잔여</th></tr>
+                                                    <tr className="bg-gray-100 border-b"><th className="p-2">규격</th><th className="p-2">길이</th><th className="p-2">필요</th><th className="p-2">사용</th><th className="p-2">잔여</th><th className="p-2">마킹</th></tr>
                                                 </thead>
                                                 <tbody>
                                                     {remainingSummary.map((item, i) => {
@@ -713,15 +724,101 @@
                                                                 <td className="p-2">{item.required}</td>
                                                                 <td className="p-2 text-blue-600">{item.used}</td>
                                                                 <td className={`p-2 font-bold ${remaining < 0 ? 'text-red-500' : (remaining === 0 ? 'text-green-500' : 'text-blue-600')}`}>{remaining}</td>
+                                                                <td className="p-2 text-left truncate max-w-[60px]" title={item.marking}>{item.marking}</td>
                                                             </tr>
                                                         );
                                                     })}
-                                                    {remainingSummary.length === 0 && <tr><td colSpan="5" className="p-8 text-gray-400 text-center">1번 탭에서 데이터를 먼저 읽어주세요.</td></tr>}
+                                                    {remainingSummary.length === 0 && <tr><td colSpan="6" className="p-8 text-gray-400 text-center">1번 탭에서 데이터를 먼저 읽어주세요.</td></tr>}
                                                 </tbody>
                                             </table>
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        )}
+
+                        {viewMode === 'result' && (
+                            <div className="p-8 h-full overflow-auto custom-scrollbar bg-white">
+                                {!hasResults ? (
+                                    <div className="text-center text-gray-400 mt-20 text-lg">작성된 결과가 없습니다.</div>
+                                ) : (
+                                    <div className="max-w-[1200px] mx-auto pb-20">
+                                        <div className="flex justify-end gap-3 mb-6">
+                                            <button onClick={() => setViewMode('manual')} className="flex items-center gap-2 bg-gray-600 text-white px-5 py-2 rounded-lg shadow font-bold hover:bg-gray-700 transition">수정화면으로 돌아가기</button>
+                                            <button onClick={downloadExcel} className="flex items-center gap-2 bg-green-600 text-white px-5 py-2 rounded-lg shadow font-bold hover:bg-green-700 transition"><Download /> 엑셀 파일 다운로드</button>
+                                        </div>
+                                        {Object.keys(currentData.cpResult).sort().map((specKey, mapIndex) => {
+                                            const patterns = currentData.cpResult[specKey];
+                                            if(patterns.length === 0) return null;
+                                            
+                                            let comp = projectInfo.company || '업체명'; let site = projectInfo.siteName || '현장명';
+                                            let displayTitle = `${comp}(${site})`;
+                                            if (!projectInfo.isNoDong) displayTitle += ` - ${currentDong}`;
+                                            displayTitle += ` [${specKey}]`;
+
+                                            let warnings = [];
+                                            if (projectInfo.isBanding) warnings.push("철밴딩에 동표시 해주세요");
+                                            if (projectInfo.isUnder1Ton) warnings.push("1톤 미만 밴딩");
+                                            if (projectInfo.memo) warnings.push(projectInfo.memo);
+
+                                            return (
+                                                <div key={specKey} className={mapIndex > 0 ? "mt-16 pt-8 border-t-2 border-dashed border-gray-300" : ""}>
+                                                    <div className="spec-title">규격: {specKey}</div>
+                                                    <table className="w-full mb-3 border-none">
+                                                        <tbody>
+                                                            <tr>
+                                                                <td className="text-xl font-bold text-left border-none pb-2">{displayTitle}</td>
+                                                                <td className="text-sm text-right border-none pb-2">날짜: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 담당자: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                    {warnings.length > 0 && <div className="text-red-600 font-bold text-lg mb-2">{warnings.join(', ')}</div>}
+                                                    <table className="excel-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th style={{width:'4%'}}>순번</th><th style={{width:'6%'}}>두께</th><th style={{width:'6%'}}>장변</th><th style={{width:'6%'}}>단변</th><th style={{width:'8%'}}>선타공길이</th><th style={{width:'5%'}}>수량</th><th style={{width:'10%'}}>단척길이</th><th style={{width:'8%'}}>컷팅 수</th><th style={{width:'6%'}}>수량</th><th style={{width:'15%'}}>마킹</th><th style={{width:'8%'}}>합계</th><th style={{width:'8%'}}>로스</th><th style={{width:'6%'}}>컷팅날</th><th style={{width:'4%'}}>비고</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {patterns.map((pattern, index) => {
+                                                                let piecesCount = pattern.groups.length;
+                                                                let totalCuts = pattern.groups.reduce((sum, g) => sum + g.cutCount, 0);
+                                                                let bladeLoss = (totalCuts * 2.6).toFixed(1).replace('.0', '');
+                                                                let displayLoss = `- ${pattern.totalLength.toLocaleString()}`; 
+                                                                
+                                                                return pattern.groups.map((group, pIdx) => (
+                                                                    <tr key={`${index}-${pIdx}`}>
+                                                                        {pIdx === 0 && <td rowSpan={piecesCount}>{index + 1}</td>}
+                                                                        {pIdx === 0 && <td rowSpan={piecesCount}>{pattern.thick.toFixed(2)}</td>}
+                                                                        {pIdx === 0 && <td rowSpan={piecesCount}>{pattern.width}</td>}
+                                                                        {pIdx === 0 && <td rowSpan={piecesCount}>{pattern.height}</td>}
+                                                                        {pIdx === 0 && <td rowSpan={piecesCount}></td>}
+                                                                        {pIdx === 0 && <td rowSpan={piecesCount}>{pattern.count}</td>}
+                                                                        <td style={{borderBottom: pIdx === piecesCount - 1 ? '1px solid #000' : '1px dashed #999'}}>{group.length}</td>
+                                                                        <td style={{borderBottom: pIdx === piecesCount - 1 ? '1px solid #000' : '1px dashed #999'}}>{group.cutCount}</td>
+                                                                        <td style={{borderBottom: pIdx === piecesCount - 1 ? '1px solid #000' : '1px dashed #999'}}>{group.cutCount * pattern.count}</td>
+                                                                        <td style={{borderBottom: pIdx === piecesCount - 1 ? '1px solid #000' : '1px dashed #999', textAlign: 'left', paddingLeft: '8px'}}>{group.marking}</td>
+                                                                        {pIdx === 0 && <td rowSpan={piecesCount}>{pattern.totalLength.toLocaleString()}</td>}
+                                                                        {pIdx === 0 && <td rowSpan={piecesCount}>{displayLoss}</td>}
+                                                                        {pIdx === 0 && <td rowSpan={piecesCount}>{bladeLoss}</td>}
+                                                                        {pIdx === 0 && <td rowSpan={piecesCount}></td>}
+                                                                    </tr>
+                                                                ));
+                                                            })}
+                                                            <tr style={{backgroundColor: '#fff2cc', fontWeight: 'bold'}}>
+                                                                <td colSpan="5">합 계</td>
+                                                                <td>{patterns.reduce((sum, p) => sum + p.count, 0)}</td>
+                                                                <td colSpan="2">합 계</td>
+                                                                <td>{patterns.reduce((sum, p) => sum + p.groups.reduce((s, c) => s + (c.cutCount * p.count), 0), 0)}</td>
+                                                                <td colSpan="5"></td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
