@@ -3,977 +3,832 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>단척 컷팅표(CP) 생성기 - Ver 13.2</title>
+    <title>스마트 단척 CP (절대규칙 강화판)</title>
     
-    <!-- ExcelJS & FileSaver 라이브러리 (필수) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
     <style>
-        /* --- 기본 스타일 --- */
-        body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; margin: 0; padding: 20px; background-color: #f4f6f8; color: #333; }
-        .container { max-width: 1400px; margin: 0 auto; background: white; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-radius: 12px; }
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #f4f6f8; margin: 0; }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         
-        /* 버전 표시 (업데이트 확인용) */
-        .version-tag { text-align: right; font-size: 12px; color: #e74c3c; margin-bottom: 5px; font-weight: bold; }
-
-        /* 탭 스타일 */
-        .tabs { display: flex; border-bottom: 2px solid #e9ecef; margin-bottom: 20px; }
-        .tab-btn { padding: 12px 24px; cursor: pointer; border: none; background: none; font-size: 16px; font-weight: 600; color: #868e96; transition: 0.2s; }
-        .tab-btn.active { color: #007bff; border-bottom: 3px solid #007bff; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; animation: fadeIn 0.3s; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        /* --- 동(Dong) 관리 탭 --- */
-        .dong-tabs { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; align-items: center; overflow-x: auto; min-height: 42px; }
-        .dong-tab { 
-            padding: 8px 16px; border: 1px solid #dee2e6; border-bottom: none; border-radius: 8px 8px 0 0; 
-            background: #f8f9fa; cursor: pointer; font-size: 14px; font-weight: bold; color: #495057; display: flex; align-items: center; gap: 8px; white-space: nowrap;
-        }
-        .dong-tab.active { background: #fff; color: #007bff; border-color: #dee2e6; border-bottom: 2px solid #fff; margin-bottom: -7px; z-index: 1; }
-        .dong-tab:hover { background: #e9ecef; }
-        .dong-add-btn { padding: 8px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
-        .dong-close-btn { font-size: 10px; color: #999; padding: 2px 5px; border-radius: 50%; }
-        .dong-close-btn:hover { background: #ffcccc; color: red; }
-
-        /* --- [입력 탭] 스타일 --- */
-        .input-layout { display: flex; gap: 30px; flex-wrap: wrap; align-items: flex-start; }
-        .left-sidebar { width: 300px; display: flex; flex-direction: column; gap: 20px; flex-shrink: 0; }
+        .excel-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; background: white; border: 2px solid #000; margin-bottom: 30px; }
+        .excel-table th, .excel-table td { border: 1px solid #000; padding: 4px; vertical-align: middle; }
+        .excel-table th { background-color: #ffe699; font-weight: bold; border-bottom: 2px solid #000; }
+        .inner-table { width: 100%; border-collapse: collapse; border: none; }
+        .inner-table td { border: none; border-bottom: 1px dashed #999; padding: 2px; }
+        .inner-table tr:last-child td { border-bottom: none; }
         
-        .info-box { width: 100%; padding: 20px; border: 1px solid #e9ecef; border-radius: 8px; background-color: #fcfcfc; box-sizing: border-box; }
-        .info-box h3 { margin-top: 0; margin-bottom: 15px; font-size: 16px; color: #495057; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .input-cell { width: 100%; height: 100%; min-height: 24px; border: none; background: transparent; text-align: center; outline: none; font-size: 13px; }
+        .input-cell:focus { background-color: #e0f2fe; }
+        .spec-title { font-size: 1.25rem; font-weight: bold; color: #1e3a8a; margin-bottom: 8px; border-left: 4px solid #1e3a8a; padding-left: 10px; }
         
-        .input-field { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
-        .checkbox-group { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-        .checkbox-label { font-size: 14px; cursor: pointer; display: flex; align-items: center; color: #495057; }
-
-        .spec-list { max-height: 300px; overflow-y: auto; }
-        .spec-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f3f5; font-size: 14px; }
-        .spec-item:last-child { border-bottom: none; }
-        .spec-item label { display: flex; align-items: center; gap: 8px; cursor: pointer; color: #333; font-weight: 500; }
-        .spec-count { font-size: 12px; color: #007bff; font-weight: bold; background: #e7f5ff; padding: 2px 6px; border-radius: 10px; }
-        .empty-spec { text-align: center; color: #adb5bd; font-size: 13px; padding: 20px 0; }
+        .drag-handle { cursor: grab; color: #adb5bd; }
+        .drag-handle:active { cursor: grabbing; color: #495057; }
         
-        .excel-section { flex: 1; min-width: 400px; }
-        .excel-controls { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
-        .btn-preset { padding: 6px 12px; font-size: 12px; font-weight: bold; color: #555; background: white; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; }
-        .btn-preset:hover { background: #f8f9fa; }
-        .btn-preset.active { background: #e7f5ff; color: #007bff; border-color: #007bff; }
-        .btn-reset { color: #dc3545; border: none; background: none; font-size: 12px; cursor: pointer; text-decoration: underline; margin-left: auto; }
-
-        .paste-wrapper { position: relative; width: 100%; height: 600px; overflow: auto; border: 1px solid #ced4da; border-radius: 4px; background-color: #fff; }
-        .paste-catcher { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; z-index: 10; cursor: text; }
-        .placeholder-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #adb5bd; font-size: 16px; pointer-events: none; text-align: center; line-height: 1.6; }
-
-        .excel-view-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .excel-view-table th { position: sticky; top: 0; background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 2px; z-index: 5; min-width: 80px; }
-        .excel-view-table td { border: 1px solid #dee2e6; padding: 0; min-width: 60px; }
-        
-        .cell-input { width: 100%; height: 100%; border: none; padding: 6px; font-size: 12px; box-sizing: border-box; outline: none; background: transparent; text-align: center; }
-        .cell-input:focus { background: #e7f5ff; box-shadow: inset 0 0 0 2px #007bff; }
-
-        .col-selector { width: 100%; border: 1px solid transparent; border-radius: 3px; font-size: 11px; font-weight: bold; padding: 4px; cursor: pointer; text-align: center; color: #aaa; }
-        .col-selector:focus { outline: none; border-color: #007bff; }
-        .col-selector.mapped-blue { background-color: #e7f5ff; color: #007bff; border-color: #b3d7ff; }
-        .col-selector.mapped-green { background-color: #d4edda; color: #155724; border-color: #c3e6cb; }
-        .col-selector.mapped-gray { background-color: #f8f9fa; color: #495057; border-color: #dee2e6; }
-
-        .action-bar { margin-top: 20px; border-top: 1px solid #e9ecef; padding-top: 20px; text-align: right; display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
-        .btn-generate { background-color: #28a745; color: white; border: none; padding: 12px 30px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; max-width: 400px; }
-        .btn-generate:hover { background-color: #218838; }
-        .status-text { font-size: 14px; color: #666; animation: blink 1s infinite; display: none; }
-        @keyframes blink { 50% { opacity: 0.5; } }
-
-        /* --- [결과 탭] 스타일 --- */
-        .cp-section { margin-bottom: 50px; }
-        .spec-tabs { display: flex; gap: 2px; margin-bottom: 0; border-bottom: 2px solid #555; }
-        .spec-tab-btn { 
-            padding: 10px 20px; background: #e9ecef; border: 1px solid #ddd; border-bottom: none; 
-            border-radius: 5px 5px 0 0; cursor: pointer; font-weight: bold; color: #555; margin-right: 2px;
-        }
-        .spec-tab-btn:hover { background: #dee2e6; }
-        .spec-tab-btn.active { background: #555; color: white; border-color: #555; }
-        
-        .spec-content { display: none; padding-top: 20px; }
-        .spec-content.active { display: block; animation: fadeIn 0.2s; }
-
-        .cp-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 10px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-        .company-name { font-size: 26px; font-weight: bold; }
-        .date-section { text-align: right; font-size: 14px; line-height: 1.6; }
-        .warning-text { color: red; font-weight: bold; font-size: 20px; margin: 15px 0; display: none; }
-        
-        table.cp-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 14px; border: 2px solid #000; }
-        table.cp-table th { background-color: #ffe699; border: 1px solid #000; padding: 8px 2px; font-weight: bold; height: 40px; vertical-align: middle; }
-        table.cp-table td { border: 1px solid #000; padding: 5px 2px; vertical-align: middle; }
-        
-        .split-cell { border-bottom: 1px dashed #999; padding: 4px 0; }
-        .split-cell:last-child { border-bottom: none; }
-        .input-hole { width: 80px; border: none; text-align: center; font-size: 14px; background: transparent; font-weight: bold; color: blue; }
-        .total-row { background-color: #ffffcc; font-weight: bold; }
-
-        /* 인쇄 설정 */
-        @media print {
-            body { background-color: white; padding: 0; }
-            .container { box-shadow: none; max-width: 100%; padding: 0; margin: 0; }
-            .tabs, .dong-tabs, .spec-tabs, .input-layout, .action-bar, .no-print { display: none !important; }
-            .tab-content { display: block !important; }
-            #output-tab { display: block !important; }
-            #input-tab { display: none !important; }
-            .spec-content { display: block !important; margin-bottom: 30px; } 
-            table.cp-table th { background-color: #ffe699 !important; -webkit-print-color-adjust: exact; }
-            .total-row { background-color: #ffffcc !important; -webkit-print-color-adjust: exact; }
-            .warning-text { -webkit-print-color-adjust: exact; }
-            .cp-header { border-bottom: 2px solid #000; }
-            .page-break { page-break-before: always; }
-        }
+        .excel-input-cell { width:100%; height:100%; border:none; text-align:center; outline:none; background:transparent; font-size:12px; font-family: 'Noto Sans KR', sans-serif; cursor: text; }
+        .excel-input-cell:focus { background-color: #e3f2fd; font-weight:bold; box-shadow: inset 0 0 0 2px #2196f3; }
+        .excel-input-cell:hover { background-color: #f8f9fa; }
     </style>
 </head>
 <body>
+    <div id="root"></div>
 
-<div class="container">
-    <div class="version-tag">Ver 13.2 (최신 업데이트 확인됨)</div>
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
 
-    <!-- 메인 탭 -->
-    <div class="tabs no-print">
-        <button class="tab-btn active" onclick="switchMainTab('input')">1. 데이터 입력</button>
-        <button class="tab-btn" onclick="switchMainTab('output')">2. 컷팅표 확인</button>
-    </div>
+        const Plus = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>;
+        const Trash2 = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>;
+        const Copy = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>;
+        const Download = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>;
+        const DragIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>;
+        const Refresh = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 0 20.49 15"></path></svg>;
 
-    <!-- 동(Dong) 탭 -->
-    <div class="dong-tabs no-print" id="dongTabsContainer"></div>
+        const getEmptyCuts = () => Array(8).fill().map(() => ({l: '', count: '', marking: ''}));
+        const getEmptyRow = (t='2.10', w='100', h='100') => ({ id: Date.now() + Math.random(), t, w, h, qty: 1, cuts: getEmptyCuts() });
 
-    <!-- 1. 입력 탭 -->
-    <div id="input-tab" class="tab-content active">
-        <div class="input-layout">
-            <div class="left-sidebar">
-                <div class="info-box">
-                    <h3>프로젝트 정보</h3>
-                    <input type="text" id="inputCompany" class="input-field" placeholder="업체명">
-                    <input type="text" id="inputSite" class="input-field" placeholder="현장명">
-                    <input type="text" id="inputMemo" class="input-field" placeholder="기타사항 (메모)">
-                    <div class="checkbox-group">
-                        <label class="checkbox-label"><input type="checkbox" id="checkNoDong" onchange="toggleNoDong()"> 동 없음 (체크 시 동 구분 안함)</label>
-                        <label class="checkbox-label"><input type="checkbox" id="checkBanding"> 철밴딩 동표기</label>
-                        <label class="checkbox-label"><input type="checkbox" id="checkUnder1Ton"> 1톤 미만 밴딩</label>
-                    </div>
-                </div>
-                <div class="info-box" id="specBox" style="display:none;">
-                    <h3>규격 선택 (자동 분석됨)</h3>
-                    <div id="specList" class="spec-list"></div>
-                </div>
-            </div>
+        function App() {
+            const [viewMode, setViewMode] = useState('input');
+            const [projectInfo, setProjectInfo] = useState({ company: '', siteName: '', memo: '', isNoDong: false, isBanding: true, isUnder1Ton: false });
+            const [dongs, setDongs] = useState(['1동']);
+            const [currentDong, setCurrentDong] = useState('1동');
 
-            <div class="excel-section">
-                <div class="excel-controls">
-                    <span style="font-size:14px; font-weight:bold; color:#495057; margin-right:5px;">📋 엑셀 견적서 입력</span>
-                    <button type="button" class="btn-preset" onclick="applyPreset('design')">설계 양식</button>
-                    <button type="button" class="btn-preset" onclick="applyPreset('sales')">영업 양식</button>
-                    <button type="button" class="btn-reset" onclick="resetExcelData()">초기화</button>
-                </div>
-                <div class="paste-wrapper" id="pasteWrapper">
-                    <textarea id="pasteCatcher" class="paste-catcher" placeholder=""></textarea>
-                    <div id="placeholderText" class="placeholder-text">
-                        <span style="font-size:24px; font-weight:bold;">Ctrl + V</span><br>
-                        엑셀 표를 여기에 붙여넣으세요
-                    </div>
-                    <table class="excel-view-table" id="excelViewTable" style="display:none;">
-                        <thead id="excelHead"></thead>
-                        <tbody id="excelBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+            const defaultDongData = { 
+                inputMode: 'sales', gridData: [], colMapping: { 1: 'width', 2: 'height', 3: 'thickness', 4: 'length', 8: 'qty', 13: 'marking' }, 
+                parsedItems: [], availableSpecs: [], selectedSpecs: [], manualRows: {}, currentManualSpec: '', cpResult: null 
+            };
+            const [dongDataStore, setDongDataStore] = useState({ '1동': JSON.parse(JSON.stringify(defaultDongData)) });
+            const currentData = dongDataStore[currentDong] || defaultDongData;
+            
+            const updateCurrentData = (updates) => {
+                setDongDataStore(prev => ({ ...prev, [currentDong]: { ...prev[currentDong], ...updates } }));
+            };
 
-        <div class="action-bar">
-            <span id="statusMsg" class="status-text">대기 중...</span>
-            <button class="btn-generate" onclick="generateAllCP()">전체 동 컷팅표 생성 ▶</button>
-        </div>
-    </div>
-
-    <!-- 2. 출력 탭 -->
-    <div id="output-tab" class="tab-content">
-        <div class="no-print" style="text-align: right; margin-bottom: 10px;">
-            <button class="btn-preset" onclick="switchMainTab('input')">◀ 입력 수정</button>
-            <button class="btn-preset" onclick="downloadExcel('current')" style="background:#28a745; color:white; border:none; margin-right:5px;">📗 현재 동 엑셀 저장</button>
-            <button class="btn-preset" onclick="downloadExcel('all')" style="background:#218838; color:white; border:none; margin-right:5px;">📚 전체 동 엑셀 저장</button>
-            <button class="btn-preset" onclick="window.print()" style="background:#007bff; color:white; border:none;">🖨 인쇄하기</button>
-        </div>
-        <div id="printArea"></div>
-    </div>
-</div>
-
-<script>
-    let dongData = { "1동": { gridData: [], colMapping: {}, resultBatches: [], selectedSpecs: null } };
-    let currentDong = "1동";
-    let isNoDongMode = false;
-    let globalExcelData = []; 
-
-    const today = new Date();
-    const formattedToday = today.getFullYear() + '.' + (today.getMonth()+1).toString().padStart(2,'0') + '.' + today.getDate().toString().padStart(2,'0');
-
-    document.addEventListener('DOMContentLoaded', () => {
-        const catcher = document.getElementById('pasteCatcher');
-        if(catcher) {
-            catcher.addEventListener('paste', handlePaste);
-            catcher.addEventListener('focus', () => document.getElementById('pasteWrapper').style.borderColor = '#007bff');
-            catcher.addEventListener('blur', () => document.getElementById('pasteWrapper').style.borderColor = '#ced4da');
-        }
-        renderDongTabs();
-        loadDongData(currentDong);
-    });
-
-    // ... (기존 로직 유지) ...
-    function toggleNoDong() {
-        isNoDongMode = document.getElementById('checkNoDong').checked;
-        const dongTabs = document.getElementById('dongTabsContainer');
-        if (isNoDongMode) {
-            dongTabs.style.display = 'none';
-            if (!dongData["1동"]) dongData["1동"] = { gridData: [], colMapping: {}, resultBatches: [], selectedSpecs: null };
-            currentDong = "1동"; 
-            loadDongData("1동");
-        } else {
-            dongTabs.style.display = 'flex';
-            renderDongTabs();
-        }
-        if (document.getElementById('output-tab').classList.contains('active')) {
-            const batches = dongData[currentDong].resultBatches;
-            renderCP(batches);
-        }
-    }
-
-    function renderDongTabs() {
-        if (isNoDongMode) return;
-        const container = document.getElementById('dongTabsContainer');
-        container.innerHTML = '';
-        Object.keys(dongData).forEach(dongName => {
-            const tab = document.createElement('div');
-            tab.className = `dong-tab ${dongName === currentDong ? 'active' : ''}`;
-            tab.onclick = () => switchDong(dongName);
-            tab.ondblclick = () => renameDong(dongName);
-            tab.innerHTML = `<span>${dongName}</span>`;
-            if (Object.keys(dongData).length > 1) {
-                const closeBtn = document.createElement('span');
-                closeBtn.className = 'dong-close-btn';
-                closeBtn.innerText = '✕';
-                closeBtn.onclick = (e) => { e.stopPropagation(); deleteDong(dongName); };
-                tab.appendChild(closeBtn);
-            }
-            container.appendChild(tab);
-        });
-        const addBtn = document.createElement('button');
-        addBtn.className = 'dong-add-btn';
-        addBtn.innerText = '+ 동 추가';
-        addBtn.onclick = addNewDong;
-        container.appendChild(addBtn);
-    }
-
-    function switchDong(dongName) {
-        saveCurrentInputToMemory();
-        currentDong = dongName;
-        renderDongTabs();
-        if (document.getElementById('output-tab').classList.contains('active')) {
-            const batches = dongData[currentDong].resultBatches;
-            renderCP(batches); 
-        }
-        loadDongData(dongName);
-    }
-
-    function addNewDong() {
-        saveCurrentInputToMemory();
-        const newName = prompt("새 동 이름을 입력하세요:", (Object.keys(dongData).length + 1) + "동");
-        if (newName && !dongData[newName]) {
-            dongData[newName] = { gridData: [], colMapping: {}, resultBatches: [], selectedSpecs: null };
-            currentDong = newName;
-            renderDongTabs();
-            loadDongData(newName);
-        }
-    }
-
-    function renameDong(oldName) {
-        const newName = prompt("동 이름을 수정하세요:", oldName);
-        if (newName && newName !== oldName && !dongData[newName]) {
-            dongData[newName] = dongData[oldName];
-            delete dongData[oldName];
-            if (currentDong === oldName) currentDong = newName;
-            renderDongTabs();
-            if (document.getElementById('output-tab').classList.contains('active')) {
-                renderCP(dongData[currentDong].resultBatches);
-            }
-        }
-    }
-
-    function deleteDong(dongName) {
-        if (confirm(`'${dongName}'을 삭제하시겠습니까?`)) {
-            delete dongData[dongName];
-            if (currentDong === dongName) currentDong = Object.keys(dongData)[0];
-            renderDongTabs();
-            loadDongData(currentDong);
-        }
-    }
-
-    function saveCurrentInputToMemory() {
-        dongData[currentDong].gridData = [...globalExcelData];
-        const mapping = {};
-        document.querySelectorAll('.col-selector').forEach((sel, idx) => { mapping[idx] = sel.value; });
-        dongData[currentDong].colMapping = mapping;
-        const checkboxes = document.querySelectorAll('.spec-checkbox');
-        if (checkboxes.length > 0) {
-             dongData[currentDong].selectedSpecs = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
-        }
-    }
-
-    function loadDongData(dongName) {
-        const data = dongData[dongName];
-        globalExcelData = data.gridData || [];
-        const catcher = document.getElementById('pasteCatcher');
-        const placeholder = document.getElementById('placeholderText');
-        const table = document.getElementById('excelViewTable');
-
-        if (globalExcelData.length > 0) {
-            catcher.style.display = 'none'; placeholder.style.display = 'none'; table.style.display = 'table';
-            renderExcelView(globalExcelData);
-            const savedMapping = data.colMapping || {};
-            const selectors = document.querySelectorAll('.col-selector');
-            if (Object.keys(savedMapping).length > 0) {
-                selectors.forEach((sel, idx) => {
-                    if (savedMapping[idx]) { sel.value = savedMapping[idx]; highlightMapped(sel); }
-                });
-            } else { applyPreset('design'); }
-            updateSpecList(); 
-        } else {
-            catcher.style.display = 'block'; catcher.value = ''; placeholder.style.display = 'block'; table.style.display = 'none';
-            document.getElementById('excelHead').innerHTML = ''; document.getElementById('excelBody').innerHTML = '';
-            updateSpecList(); 
-        }
-    }
-
-    function switchMainTab(tabName) {
-        if (document.getElementById('input-tab').classList.contains('active')) {
-            saveCurrentInputToMemory();
-        }
-        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-        document.getElementById(tabName + '-tab').classList.add('active');
-        const index = tabName === 'input' ? 0 : 1;
-        document.querySelectorAll('.tab-btn')[index].classList.add('active');
-
-        if (tabName === 'output') {
-            const batches = dongData[currentDong].resultBatches;
-            renderCP(batches);
-        }
-    }
-
-    function handlePaste(e) {
-        e.preventDefault();
-        let data = (e.clipboardData || window.clipboardData).getData('text');
-        let rows = data.trim().split(/\r\n|\n/).map(row => row.split('\t'));
-        if (rows.length > 0) {
-            globalExcelData = rows;
-            dongData[currentDong].gridData = globalExcelData; 
-            renderExcelView(rows);
-            document.getElementById('pasteCatcher').style.display = 'none';
-            document.getElementById('placeholderText').style.display = 'none';
-            document.getElementById('excelViewTable').style.display = 'table';
-            applyPreset('design');
-        }
-    }
-
-    function renderExcelView(rows) {
-        const thead = document.getElementById('excelHead');
-        const tbody = document.getElementById('excelBody');
-        thead.innerHTML = ''; tbody.innerHTML = '';
-        const maxCols = Math.max(...rows.map(r => r.length));
-        let trHead = document.createElement('tr');
-        trHead.appendChild(document.createElement('th')).innerText = '#';
-        for (let i = 0; i < maxCols; i++) {
-            let th = document.createElement('th');
-            th.innerHTML = `<select id="col-${i}" class="col-selector" onchange="highlightMapped(this)"><option value="">- 무시 -</option><option value="width">가로</option><option value="height">세로</option><option value="thickness">두께</option><option value="length">📏 길이</option><option value="qty">🔢 수량</option><option value="marking">🏷️ 마킹</option></select>`;
-            trHead.appendChild(th);
-        }
-        thead.appendChild(trHead);
-        rows.forEach((row, rIdx) => {
-            let tr = document.createElement('tr');
-            let tdNum = document.createElement('td');
-            tdNum.style.textAlign='center'; tdNum.style.color='#adb5bd'; tdNum.innerText = rIdx + 1;
-            tr.appendChild(tdNum);
-            for (let cIdx = 0; cIdx < maxCols; cIdx++) {
-                let td = document.createElement('td');
-                let input = document.createElement('input');
-                input.type = "text"; input.className = "cell-input"; input.value = row[cIdx] || '';
-                input.oninput = function() { 
-                    if(!globalExcelData[rIdx]) globalExcelData[rIdx] = []; 
-                    globalExcelData[rIdx][cIdx] = this.value; 
-                    dongData[currentDong].gridData = globalExcelData; 
-                };
-                td.appendChild(input); tr.appendChild(td);
-            }
-            tbody.appendChild(tr);
-        });
-    }
-
-    function highlightMapped(select) {
-        select.classList.remove('mapped-blue', 'mapped-green', 'mapped-gray');
-        const val = select.value;
-        if (['length', 'qty'].includes(val)) select.classList.add('mapped-blue');
-        else if (['width', 'height', 'thickness'].includes(val)) select.classList.add('mapped-green');
-        else if (val !== '') select.classList.add('mapped-gray');
-        const idx = select.id.split('-')[1];
-        if(!dongData[currentDong].colMapping) dongData[currentDong].colMapping = {};
-        dongData[currentDong].colMapping[idx] = val;
-        updateSpecList();
-    }
-
-    function resetExcelData() {
-        globalExcelData = [];
-        dongData[currentDong].gridData = [];
-        dongData[currentDong].colMapping = {};
-        dongData[currentDong].selectedSpecs = null;
-        loadDongData(currentDong);
-    }
-
-    function applyPreset(type) {
-        if (globalExcelData.length === 0) return;
-        const selects = document.querySelectorAll('.col-selector');
-        selects.forEach(s => { s.value = ''; highlightMapped(s); });
-        const setCol = (idx, val) => { const el = document.getElementById(`col-${idx}`); if(el) { el.value = val; highlightMapped(el); } };
-        if (type === 'sales') { setCol(1, 'width'); setCol(2, 'height'); setCol(3, 'thickness'); setCol(4, 'length'); setCol(8, 'qty'); setCol(13, 'marking'); }
-        else if (type === 'design') { setCol(2, 'width'); setCol(3, 'height'); setCol(4, 'thickness'); setCol(5, 'length'); setCol(7, 'qty'); setCol(8, 'marking'); }
-    }
-
-    function parseDataFromMemory(dongName) {
-        const data = dongData[dongName];
-        const grid = data.gridData;
-        const mapping = data.colMapping;
-        if (!grid || grid.length === 0 || !mapping) return null;
-        const map = {};
-        for (const [idx, val] of Object.entries(mapping)) { if (val) map[val] = idx; }
-        if (map.length === undefined || map.qty === undefined) return null;
-        let parsedItems = [];
-        for (let i = 0; i < grid.length; i++) {
-            const row = grid[i];
-            const getVal = (idx) => (row[idx] !== undefined) ? String(row[idx]).trim().replace(/,/g, '') : '';
-            let len = parseFloat(getVal(map.length));
-            const qty = parseFloat(getVal(map.qty));
-            if (isNaN(len) || isNaN(qty) || qty <= 0) continue;
-            if (len < 20) len = Math.round(len * 1000); else len = Math.round(len);
-            if (len >= 2000) continue;
-            let thickness = map.thickness !== undefined ? getVal(map.thickness) : '2.1';
-            let width = map.width !== undefined ? getVal(map.width) : '100';
-            let height = map.height !== undefined ? getVal(map.height) : '100';
-            parsedItems.push({ thickness, width, height, length: len, qty: qty, marking: map.marking !== undefined ? getVal(map.marking) : '' });
-        }
-        return parsedItems;
-    }
-
-    function updateSpecList() {
-        const items = parseDataFromMemory(currentDong);
-        const container = document.getElementById('specList');
-        const box = document.getElementById('specBox');
-        if (!items || items.length === 0) { box.style.display = 'none'; container.innerHTML = ''; return; }
-        box.style.display = 'block'; 
-        const specCounts = {};
-        items.forEach(item => { const key = `${item.width}*${item.height}*${item.thickness}`; if(!specCounts[key]) specCounts[key] = 0; specCounts[key] += item.qty; });
-        const savedSpecs = dongData[currentDong].selectedSpecs;
-        container.innerHTML = '';
-        Object.keys(specCounts).sort().forEach(key => {
-            const isChecked = savedSpecs ? savedSpecs.includes(key) : true;
-            const div = document.createElement('div');
-            div.className = 'spec-item';
-            div.innerHTML = `<label><input type="checkbox" class="spec-checkbox" value="${key}" ${isChecked ? 'checked' : ''}>${key}</label><span class="spec-count">${specCounts[key]}ea</span>`;
-            container.appendChild(div);
-        });
-    }
-
-    async function generateAllCP() {
-        saveCurrentInputToMemory(); 
-        const statusEl = document.getElementById('statusMsg');
-        const dongsToProcess = Object.keys(dongData);
-        let processedCount = 0;
-
-        for (const dName of dongsToProcess) {
-            let allItems = parseDataFromMemory(dName);
-            if (!allItems || allItems.length === 0) { dongData[dName].resultBatches = []; continue; }
-            const savedSpecs = dongData[dName].selectedSpecs;
-            if (savedSpecs !== null) {
-                allItems = allItems.filter(item => { const key = `${item.width}*${item.height}*${item.thickness}`; return savedSpecs.includes(key); });
-            }
-            if (allItems.length === 0) { dongData[dName].resultBatches = []; continue; }
-            statusEl.innerText = `[${dName}] 분석 중...`;
-            await new Promise(r => setTimeout(r, 10)); 
-            const result = await runSimulationForItems(allItems);
-            dongData[dName].resultBatches = result;
-            processedCount++;
-        }
-        statusEl.innerText = "완료!";
-        setTimeout(() => statusEl.innerText = "", 2000);
-        if (processedCount > 0) { switchMainTab('output'); } 
-        else { alert("입력된 데이터가 없거나 유효하지 않습니다."); }
-    }
-
-    async function runSimulationForItems(rawItems) {
-        let flatItems = []; let specs = {};
-        rawItems.forEach(item => {
-            const specKey = `${item.thickness}|${item.width}|${item.height}`;
-            if (!specs[specKey]) specs[specKey] = { thickness: item.thickness, width: item.width, height: item.height };
-            for(let q=0; q<item.qty; q++) flatItems.push({ specKey, length: item.length, marking: item.marking });
-        });
-        const distinctMarkingsCount = new Set(flatItems.map(i => i.marking)).size;
-        const SIMULATION_RUNS = 200; 
-        let bestBatches = null; let bestScore = -Infinity;
-
-        for (let i = 0; i < SIMULATION_RUNS; i++) {
-            let currentItems = [...flatItems];
-            const strategyIdx = i % 5;
-            if (strategyIdx === 0) currentItems.sort((a, b) => b.length - a.length);
-            else if (strategyIdx === 1) currentItems.sort((a, b) => a.marking.localeCompare(b.marking) || b.length - a.length);
-            else if (strategyIdx === 2) currentItems.sort((a, b) => a.marking.localeCompare(b.marking) || a.length - b.length);
-            else if (strategyIdx === 3) currentItems.sort((a, b) => a.length - b.length);
-            else currentItems.sort(() => Math.random() - 0.5);
-
-            let groupedQueue = {};
-            currentItems.forEach(item => { if(!groupedQueue[item.specKey]) groupedQueue[item.specKey] = []; groupedQueue[item.specKey].push(item); });
-            const batches = executeCoreLogic(groupedQueue, specs, i);
-            const score = calculateScore(batches, distinctMarkingsCount);
-            if (score > bestScore) { bestScore = score; bestBatches = batches; }
-        }
-        if (bestBatches) {
-            bestBatches.sort((a, b) => {
-                const minLenA = a.items.length > 0 ? a.items[0].length : Infinity;
-                const minLenB = b.items.length > 0 ? b.items[0].length : Infinity;
-                return minLenA - minLenB;
-            });
-            bestBatches.forEach((b, idx) => b.seq = idx + 1);
-        }
-        return bestBatches || [];
-    }
-
-    function executeCoreLogic(itemsBySpec, specs, seed) {
-        let iterationBatches = [];
-        for(const sKey in itemsBySpec) {
-            let specItems = itemsBySpec[sKey]; let specObj = specs[sKey];
-            let itemsByMarking = {};
-            specItems.forEach(it => { if(!itemsByMarking[it.marking]) itemsByMarking[it.marking] = []; itemsByMarking[it.marking].push(it); });
-            let leftovers = [];
-            for(const marking in itemsByMarking) {
-                let group = itemsByMarking[marking]; let bestCut = 0;
-                const itemLen = group[0].length; const totalQty = group.length;
-                for(let cuts = 7; cuts >= 2; cuts--) {
-                    const totalLen = itemLen * cuts;
-                    if(totalLen >= 2000 && totalLen < 6000) { if (totalQty % cuts === 0) { bestCut = cuts; break; } }
+            const addDong = () => {
+                const name = prompt("새 동 이름을 입력하세요 (예: 2동):");
+                if (name && !dongs.includes(name)) {
+                    setDongs([...dongs, name]);
+                    setDongDataStore(prev => ({ ...prev, [name]: JSON.parse(JSON.stringify(defaultDongData)) }));
+                    setCurrentDong(name);
                 }
-                if (bestCut > 0) {
-                    const pipeQty = totalQty / bestCut;
-                    iterationBatches.push({ seq: 0, spec: specObj, items: [{ length: itemLen, marking: marking, count: bestCut }], qty: pipeQty, sig: `DIVISOR_${marking}` });
-                } else {
-                    let remainingInGroup = [...group];
-                    while(remainingInGroup.length > 0) {
-                        let currentPipe = []; let currentLen = 0; let nextRound = [];
-                        for(let item of remainingInGroup) {
-                            const limitCuts = (item.length < 500) ? 8 : 5;
-                            const isEnough = currentLen >= 2000;
-                            if(currentLen + item.length < 6000) {
-                                if(isEnough && currentPipe.length >= limitCuts) { nextRound.push(item); continue; }
-                                currentPipe.push(item); currentLen += item.length;
-                            } else { nextRound.push(item); }
-                        }
-                        if (currentLen >= 2000) { iterationBatches.push({ seq: 0, spec: specObj, items: summarizePipeContent(currentPipe), qty: 1, sig: `PURE_${marking}_${Math.random()}` }); }
-                        else { leftovers.push(...currentPipe); }
-                        remainingInGroup = nextRound;
-                        if(currentPipe.length === 0 && remainingInGroup.length > 0) { leftovers.push(...remainingInGroup); break; }
-                    }
+            };
+            const deleteDong = (name) => {
+                if(dongs.length <= 1) return alert("최소 1개의 동은 있어야 합니다.");
+                if(confirm(`'${name}'을 삭제하시겠습니까?`)) {
+                    setDongs(dongs.filter(d => d !== name));
+                    if(currentDong === name) setCurrentDong(dongs[0]);
+                    setDongDataStore(prev => { const n = {...prev}; delete n[name]; return n; });
                 }
-            }
-            if (leftovers.length > 0) {
-                if (seed % 2 === 0) leftovers.sort((a,b) => b.length - a.length); else leftovers.sort(() => Math.random() - 0.5);
-                let remainingLeftovers = [...leftovers];
-                while(remainingLeftovers.length > 0) {
-                    let currentPipe = []; let currentLen = 0; let nextRound = [];
-                    for(let item of remainingLeftovers) {
-                        if(currentLen + item.length < 6000) {
-                            if(currentLen >= 2000) { nextRound.push(item); continue; }
-                            currentPipe.push(item); currentLen += item.length;
-                        } else { nextRound.push(item); }
-                    }
-                    if (currentLen >= 2000) { iterationBatches.push({ seq: 0, spec: specObj, items: summarizePipeContent(currentPipe), qty: 1, sig: `MIXED_${Math.random()}` }); }
-                    else { injectLeftoversToBatches(currentPipe, iterationBatches, specObj); }
-                    remainingLeftovers = nextRound;
-                    if(currentPipe.length === 0 && remainingLeftovers.length > 0) { injectLeftoversToBatches(remainingLeftovers, iterationBatches, specObj); break; }
-                }
-            }
-        }
-        return compressBatches(iterationBatches);
-    }
-    function injectLeftoversToBatches(leftoverItems, batches, spec) {
-        for (let item of leftoverItems) {
-            let inserted = false;
-            for (let batch of batches) {
-                if (batch.spec.thickness !== spec.thickness || batch.spec.width !== spec.width) continue;
-                let currentLen = batch.items.reduce((sum, it) => sum + (it.length * it.count), 0);
-                if (currentLen + item.length < 6000) {
-                    if (batch.items.some(it => it.marking === item.marking)) { addItemToBatchSummary(batch, item); inserted = true; break; }
-                }
-            }
-            if (!inserted) {
-                for (let batch of batches) {
-                    if (batch.spec.thickness !== spec.thickness || batch.spec.width !== spec.width) continue;
-                    let currentLen = batch.items.reduce((sum, it) => sum + (it.length * it.count), 0);
-                    if (currentLen + item.length < 6000) { addItemToBatchSummary(batch, item); inserted = true; break; }
-                }
-            }
-            if (!inserted) { batches.push({ seq: 0, spec: spec, items: [{ length: item.length, marking: item.marking, count: 1 }], qty: 1, sig: `LEFTOVER_${Math.random()}` }); }
-        }
-    }
-    function addItemToBatchSummary(batch, item) {
-        const existing = batch.items.find(it => it.length === item.length && it.marking === item.marking);
-        if (existing) existing.count++;
-        else { batch.items.push({ length: item.length, marking: item.marking, count: 1 }); batch.items.sort((a,b) => a.length - b.length); }
-    }
-    function compressBatches(batches) {
-        const finalBatches = [];
-        batches.forEach(p => {
-            const sortedItems = [...p.items].sort((a,b) => a.length - b.length || a.marking.localeCompare(b.marking));
-            const contentStr = sortedItems.map(it => `${it.length}_${it.marking}_${it.count}`).join('|');
-            p.sig = `${p.spec.width}_${p.spec.height}_${p.spec.thickness}__${contentStr}`;
-        });
-        batches.sort((a, b) => a.sig.localeCompare(b.sig));
-        let currentBatch = null;
-        batches.forEach(pipe => {
-            if (currentBatch && currentBatch.sig === pipe.sig) { currentBatch.qty += pipe.qty; }
-            else { if (currentBatch) finalBatches.push(currentBatch); currentBatch = { seq: 0, spec: pipe.spec, items: JSON.parse(JSON.stringify(pipe.items)), qty: pipe.qty, sig: pipe.sig }; }
-        });
-        if (currentBatch) finalBatches.push(currentBatch);
-        return finalBatches;
-    }
-    function summarizePipeContent(pipeItems) {
-        const map = new Map();
-        pipeItems.forEach(it => { const key = `${it.length}_${it.marking}`; if(!map.has(key)) map.set(key, { length: it.length, marking: it.marking, count: 0 }); map.get(key).count++; });
-        return Array.from(map.values()).sort((a,b) => a.length - b.length);
-    }
-    function calculateScore(batches, totalDistinctMarkings) {
-        let score = 0;
-        if (batches.length > totalDistinctMarkings) score -= (batches.length - totalDistinctMarkings) * 500000; else score += 1000000; 
-        batches.forEach(batch => {
-            const cuts = batch.items.reduce((s,i)=>s+i.count,0);
-            const markings = new Set(batch.items.map(i=>i.marking));
-            if (markings.size === 1) score += 5000; 
-            else { score -= 100000; if (cuts > 5) score -= (cuts-5) * 1000; }
-        });
-        return score;
-    }
+            };
 
-    function renderCP(batches) {
-        const printArea = document.getElementById('printArea');
-        printArea.innerHTML = ''; 
-        if (!batches || batches.length === 0) {
-            printArea.innerHTML = '<div style="text-align:center; padding:50px; color:#999;">결과가 없습니다.</div>'; return;
-        }
-        const groups = {};
-        batches.forEach(b => {
-            const key = `${b.spec.width}*${b.spec.height}*${b.spec.thickness}`;
-            if(!groups[key]) groups[key] = { spec: b.spec, batches: [] };
-            groups[key].batches.push(b);
-        });
-        const keys = Object.keys(groups).sort(); 
-        const tabsContainer = document.createElement('div');
-        tabsContainer.className = 'spec-tabs no-print';
-        printArea.appendChild(tabsContainer);
-        const contentContainer = document.createElement('div');
-        printArea.appendChild(contentContainer);
+            const handlePaste = (e) => {
+                e.preventDefault();
+                const text = e.clipboardData.getData('text');
+                const rows = text.trim().split('\n').map(row => row.split('\t'));
+                updateCurrentData({ gridData: rows });
+            };
 
-        const comp = document.getElementById('inputCompany').value.trim();
-        const site = document.getElementById('inputSite').value.trim();
-        let baseTitle = "업체명(현장명)";
-        if (comp || site) baseTitle = `${comp}${site ? '(' + site + ')' : ''}`;
-        if (!isNoDongMode) baseTitle += ` - ${currentDong}`;
-        const isBanding = document.getElementById('checkBanding').checked;
+            const handleGridEdit = (rIdx, cIdx, val) => {
+                const newGrid = [...currentData.gridData];
+                newGrid[rIdx][cIdx] = val; 
+                updateCurrentData({ gridData: newGrid });
+            };
 
-        keys.forEach((key, idx) => {
-            const group = groups[key];
-            const spec = group.spec;
-            const groupBatches = group.batches;
+            const resetExcel = () => {
+                updateCurrentData({ gridData: [], parsedItems: [], availableSpecs: [], selectedSpecs: [] });
+            };
 
-            const tabBtn = document.createElement('button');
-            tabBtn.className = `spec-tab-btn ${idx === 0 ? 'active' : ''}`;
-            tabBtn.innerText = key;
-            tabBtn.onclick = () => switchSpecTab(idx);
-            tabsContainer.appendChild(tabBtn);
-
-            const contentDiv = document.createElement('div');
-            contentDiv.id = `spec-content-${idx}`;
-            contentDiv.className = `spec-content ${idx === 0 ? 'active' : ''}`;
-            if (idx > 0) contentDiv.classList.add('page-break'); 
-
-            let displayTitle = baseTitle;
-            const is100x100 = (spec.width == '100' && spec.height == '100');
-            if (!is100x100) displayTitle += ` <span style="color:red; font-size:0.8em;">${spec.width}*${spec.height}</span>`;
-
-            let tbody = '';
-            let totalRaw = 0;
-            let totalCut = 0;
-
-            groupBatches.forEach(batch => {
-                const totalUsedLength = batch.items.reduce((sum, it) => sum + (it.length * it.count), 0);
-                const cutsPerPipe = batch.items.reduce((sum, it) => sum + it.count, 0);
-                const bladeLoss = Math.round(cutsPerPipe * 2.6);
-                const preHoleId = `prehole-${batch.seq}`; const lossId = `loss-${batch.seq}`; const totalId = `total-${batch.seq}`;
-
-                const lengthsHtml = batch.items.map(it => `<div class="split-cell">${it.length}</div>`).join('');
-                const cutsHtml = batch.items.map(it => `<div class="split-cell">${it.count}</div>`).join('');
-                const qtyHtml = batch.items.map(it => `<div class="split-cell">${it.count}</div>`).join('');
-                const markingHtml = batch.items.map(it => `<div class="split-cell">${it.marking}</div>`).join('');
-                const hVal = (spec.height == '50') ? '<span style="color:red; font-weight:bold;">50</span>' : spec.height;
-
-                tbody += `<tr>
-                    <td>${batch.seq}</td><td>${spec.thickness}</td><td>${spec.width}</td><td>${hVal}</td>
-                    <td><input type="number" class="input-hole" id="${preHoleId}" oninput="calcLoss('${batch.seq}')"></td>
-                    <td style="background:#fff0f6; font-weight:bold; color:#d63384;">${Math.round(batch.qty * 100)/100}</td>
-                    <td>${lengthsHtml}</td><td>${cutsHtml}</td><td>${qtyHtml}</td><td>${markingHtml}</td>
-                    <td id="${totalId}" data-val="${totalUsedLength}">${totalUsedLength.toLocaleString()}</td>
-                    <td id="${lossId}">- ${totalUsedLength.toLocaleString()}</td><td>${bladeLoss}</td>
-                    <td><input type="text" class="input-hole" style="width:100%"></td>
-                </tr>`;
-                totalRaw += batch.qty; totalCut += (cutsPerPipe * batch.qty);
-            });
-            const totalRow = `<tr class="total-row"><td colspan="3">합 계</td><td></td><td></td><td style="color:#d63384;">${Math.round(totalRaw*100)/100}</td><td colspan="2">총 생산수량</td><td>${Math.round(totalCut)}</td><td></td><td></td><td></td><td></td><td></td></tr>`;
-            contentDiv.innerHTML = `<div class="cp-header"><div class="company-name">${displayTitle}</div><div class="date-section">날짜: <span>${formattedToday}</span><br>담당자: <input type="text" style="border:none; border-bottom:1px solid #000; width:100px; text-align:center;"></div></div><div class="warning-text" style="display: ${isBanding ? 'block' : 'none'}">철밴딩에 동표시 해주세요</div><table class="cp-table"><colgroup><col style="width: 50px;"><col style="width: 60px;"><col style="width: 60px;"><col style="width: 60px;"><col style="width: 100px;"><col style="width: 50px;"><col style="width: 80px;"><col style="width: 60px;"><col style="width: 50px;"><col style="width: 80px;"><col style="width: 80px;"><col style="width: 80px;"><col style="width: 60px;"><col></colgroup><thead><tr><th>순번</th><th>두께</th><th>장변</th><th>단변</th><th>선타공길이</th><th>수량</th><th>단척길이</th><th>컷팅 수</th><th>수량</th><th>마킹</th><th>합계</th><th>로스</th><th>컷팅날</th><th>비고</th></tr></thead><tbody>${tbody}${totalRow}</tbody></table>`;
-            contentContainer.appendChild(contentDiv);
-        });
-    }
-
-    // --- [EXCELJS] Download Function ---
-    async function downloadExcel(mode) {
-        const dongList = mode === 'all' ? Object.keys(dongData) : [currentDong];
-        if (dongList.length === 0) { alert("저장할 데이터가 없습니다."); return; }
-
-        for (const dName of dongList) {
-            const batches = dongData[dName].resultBatches;
-            if (!batches || batches.length === 0) continue;
-
-            const groups = {};
-            batches.forEach(b => {
-                const key = `${b.spec.width}*${b.spec.height}*${b.spec.thickness}`;
-                if(!groups[key]) groups[key] = { spec: b.spec, batches: [] };
-                groups[key].batches.push(b);
-            });
-
-            for (const key of Object.keys(groups)) {
-                const group = groups[key];
-                const spec = group.spec;
-                const groupBatches = group.batches;
-
-                // Create Workbook
-                const workbook = new ExcelJS.Workbook();
-                const sheet = workbook.addWorksheet('Sheet1', {
-                    pageSetup: { 
-                        paperSize: 9, // A4
-                        orientation: 'landscape', 
-                        fitToPage: true, 
-                        fitToWidth: 1, 
-                        fitToHeight: 0 // Auto height
-                    }
-                });
-
-                // --- Styles ---
-                const borderStyle = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
-                const alignCenter = { vertical: 'middle', horizontal: 'center', wrapText: true };
-                const headerFill = { type: 'pattern', pattern:'solid', fgColor:{argb:'FFFFE699'} };
-                const totalFill = { type: 'pattern', pattern:'solid', fgColor:{argb:'FFFFFFCC'} };
-
-                // Title Construction
-                const comp = document.getElementById('inputCompany').value.trim() || '업체명';
-                const site = document.getElementById('inputSite').value.trim() || '현장명';
-                let title = `${comp}(${site})`;
-                if (!isNoDongMode) title += ` - ${dName}`;
+            const extractData = () => {
+                let items = [];
+                let specSet = new Set();
+                const { gridData, colMapping } = currentData;
                 
-                const is100x100 = (spec.width == '100' && spec.height == '100');
-                let displayTitle = title;
-                if (!is100x100) displayTitle += ` ${spec.width}*${spec.height}`;
+                const getIdx = (key) => Object.keys(colMapping).find(k => colMapping[k] === key);
+                const tIdx = getIdx('thickness'); const wIdx = getIdx('width'); const hIdx = getIdx('height');
+                const lenIdx = getIdx('length'); const qtyIdx = getIdx('qty'); const markIdx = getIdx('marking');
 
-                // Row 1: Title
-                sheet.mergeCells('A1:N1');
-                const titleCell = sheet.getCell('A1');
-                titleCell.value = displayTitle;
-                titleCell.font = { name: 'Malgun Gothic', size: 16, bold: true };
+                if (!lenIdx || !qtyIdx) return alert('길이와 수량 열을 지정해주세요.');
 
-                // Row 3: Warning
-                if (document.getElementById('checkBanding').checked) {
-                    sheet.mergeCells('A3:F3');
-                    const warnCell = sheet.getCell('A3');
-                    warnCell.value = "철밴딩에 동표시 해주세요";
-                    warnCell.font = { name: 'Malgun Gothic', size: 12, bold: true, color: { argb: 'FFFF0000' } };
-                }
+                gridData.forEach(row => {
+                    let rawLen = parseFloat(String(row[lenIdx]||'').replace(/,/g, '').trim());
+                    let qty = parseInt(String(row[qtyIdx]||'').replace(/,/g, '').replace(/[^0-9]/g, '').trim());
+                    let lengthInMm = (rawLen > 0 && rawLen < 20) ? Math.round(rawLen * 1000) : Math.round(rawLen);
 
-                // Row 4: Header
-                const headers = ["순번", "두께", "장변", "단변", "선타공길이", "수량", "단척길이", "컷팅 수", "수량", "마킹", "합계", "로스", "컷팅날", "비고"];
-                const headerRow = sheet.getRow(4);
-                headerRow.values = headers;
-                headerRow.height = 30;
-                headerRow.eachCell((cell) => {
-                    cell.fill = headerFill;
-                    cell.font = { name: 'Malgun Gothic', size: 11, bold: true };
-                    cell.alignment = alignCenter;
-                    cell.border = borderStyle;
-                });
-
-                // Data Rows
-                let currentRow = 5;
-                let totalRaw = 0;
-                let totalCut = 0;
-
-                groupBatches.forEach(batch => {
-                    const rowsInBatch = batch.items.length;
-                    const totalUsed = batch.items.reduce((s, it) => s + (it.length * it.count), 0);
-                    const cuts = batch.items.reduce((s, it) => s + it.count, 0);
-                    const bladeLoss = Math.round(cuts * 2.6);
-                    totalRaw += batch.qty;
-                    totalCut += (cuts * batch.qty);
-
-                    const startRow = currentRow;
-
-                    batch.items.forEach((item, idx) => {
-                        const row = sheet.getRow(currentRow);
-                        row.height = 28;
+                    if (lengthInMm > 0 && lengthInMm < 2000 && qty > 0) {
+                        let thick = parseFloat(String(row[tIdx]||'2.1').replace(/[^0-9.]/g, ''));
+                        let formattedThick = Number.isInteger(thick) ? thick.toFixed(1) : thick.toString();
+                        if (formattedThick === '2.10') formattedThick = '2.1';
                         
-                        // Basic Columns
-                        row.getCell(7).value = item.length; // G
-                        row.getCell(8).value = item.count;  // H
-                        row.getCell(9).value = item.count;  // I
-                        row.getCell(10).value = item.marking; // J
+                        let width = parseInt(String(row[wIdx]||'100').replace(/[^0-9]/g, ''));
+                        let height = parseInt(String(row[hIdx]||'100').replace(/[^0-9]/g, ''));
+                        let marking = String(row[markIdx]||'').trim();
+                        let specKey = `${width}*${height} ${formattedThick}T`;
 
-                        if (idx === 0) {
-                            row.getCell(1).value = batch.seq; 
-                            row.getCell(2).value = spec.thickness;
-                            row.getCell(3).value = spec.width;
-                            row.getCell(4).value = spec.height;
-                            if (spec.height == '50') row.getCell(4).font = { color: { argb: 'FFFF0000' }, bold: true };
-                            
-                            // Prehole (User Input)
-                            // row.getCell(5).value = ""; // Empty
-
-                            // Qty
-                            row.getCell(6).value = Math.round(batch.qty*100)/100;
-                            row.getCell(6).font = { bold: true };
-
-                            // Results
-                            row.getCell(11).value = totalUsed; // K
-                            // Formula: =E{row} - K{row}
-                            // ExcelJS uses 1-based index
-                            row.getCell(12).value = { formula: `E${currentRow}-K${currentRow}`, result: -totalUsed }; 
-                            row.getCell(13).value = bladeLoss;
-                        }
-
-                        // Apply Styles
-                        for(let c=1; c<=14; c++) {
-                            const cell = row.getCell(c);
-                            cell.border = borderStyle;
-                            cell.alignment = alignCenter;
-                            cell.font = cell.font || { name: 'Malgun Gothic', size: 11 };
-                        }
-                        currentRow++;
-                    });
-
-                    // Merge Cells
-                    if (rowsInBatch > 1) {
-                        const endRow = currentRow - 1;
-                        ['A','B','C','D','E','F','K','L','M','N'].forEach(col => {
-                            sheet.mergeCells(`${col}${startRow}:${col}${endRow}`);
-                        });
+                        specSet.add(specKey);
+                        let existing = items.find(i => i.specKey === specKey && i.length === lengthInMm && i.marking === marking);
+                        if (existing) existing.qty += qty;
+                        else items.push({ specKey, thick, width, height, length: lengthInMm, qty, marking });
                     }
                 });
 
-                // Add Conditional Formatting for Loss Column (L)
-                // Range: L5 : L{currentRow-1}
-                if (currentRow > 5) {
-                    sheet.addConditionalFormatting({
-                        ref: `L5:L${currentRow-1}`,
-                        rules: [
-                            {
-                                type: 'cellIs',
-                                operator: 'lessThan',
-                                formulae: ['0'],
-                                style: { font: { color: { argb: 'FFFF0000' } } }
-                            },
-                            {
-                                type: 'cellIs',
-                                operator: 'greaterThan',
-                                formulae: ['6000'],
-                                style: { font: { color: { argb: 'FFFF0000' } } }
-                            }
-                        ]
+                if (items.length === 0) return alert('2000 미만의 유효한 데이터가 없습니다.');
+                
+                let specs = Array.from(specSet).sort();
+                updateCurrentData({ parsedItems: items, availableSpecs: specs, selectedSpecs: specs });
+                alert(`성공! 총 ${items.reduce((acc, cur) => acc + cur.qty, 0)}개의 단척 조각을 추출했습니다.`);
+            };
+
+            const toggleSpec = (specKey) => {
+                let newSelected = [...currentData.selectedSpecs];
+                if (newSelected.includes(specKey)) newSelected = newSelected.filter(s => s !== specKey);
+                else newSelected.push(specKey);
+                updateCurrentData({ selectedSpecs: newSelected });
+            };
+
+            const [isCalculating, setIsCalculating] = useState(false);
+            const [calcMessage, setCalcMessage] = useState("");
+
+            // 💡 [초강력 알고리즘 수정 완료] 
+            // 1. 단척 길이는 무조건 짧은 길이부터 사용 (오름차순)
+            // 2. 합계 길이는 무조건 오름차순 (사실상 내림차순: 1번 > 2번 > 3번)
+            // 3. 합계 2000 이상 5850 미만
+            // 4. 8컷 미만 (조각 수 8개 이하 허용 - 7컷)
+            const runSimulationCore = (itemsToPack) => {
+                let groups = {};
+                itemsToPack.forEach(item => {
+                    if(!groups[item.specKey]) groups[item.specKey] = [];
+                    groups[item.specKey].push({ ...item });
+                });
+
+                let resultsBySpec = {};
+
+                for(let specKey in groups) {
+                    let poolMaster = [];
+                    let idCounter = 0;
+                    groups[specKey].forEach(p => { 
+                        for(let i=0; i<p.qty; i++) poolMaster.push({ ...p, localId: idCounter++ }); 
                     });
+
+                    // [조건 1] 단척의 길이는 무조건 짧은 길이부터 사용 (오름차순 정렬)
+                    poolMaster.sort((a, b) => a.length - b.length || a.marking.localeCompare(b.marking));
+
+                    let bestGlobalPlan = [];
+                    let avail = [...poolMaster];
+                    // [조건 2] 합계 길이는 점점 줄어들어야 함. 첫 시작 Max는 5850(미만).
+                    let previousSum = 5850; 
+
+                    while (avail.length > 0) {
+                        let currentBin = { sum: 0, pieces: [] };
+                        let usedIds = new Set();
+                        
+                        // [조건 2 구현] 이전 순번 합계보다 무조건 작아야 함 (합계 내림차순)
+                        // 단, 5850 미만이어야 하므로 5849가 최대 시작점
+                        let targetMax = previousSum - 1; 
+                        if (targetMax >= 5850) targetMax = 5849;
+                        
+                        // 더 이상 합계를 줄일 수 없거나 2000 미만이 강제되는 경우 중단
+                        if (targetMax < 2000) break; 
+
+                        // Greedy: 앞에서부터(짧은 것부터) 넣기
+                        for (let i = 0; i < avail.length; i++) {
+                            // [조건 4] 컷팅 수 합계 8컷 미만 -> 조각 수 8개까지 허용 (7번 컷팅 = 8조각)
+                            // 8컷 "미만"이므로 7컷까지 가능 -> 8조각
+                            if (currentBin.pieces.length >= 8) break; 
+                            
+                            let piece = avail[i];
+                            if (currentBin.sum + piece.length <= targetMax) {
+                                currentBin.pieces.push(piece);
+                                currentBin.sum += piece.length;
+                                usedIds.add(piece.localId);
+                            }
+                        }
+
+                        // [조건 3] 합계 2000 이상 강제 달성 (Swap 로직)
+                        // 짧은 것만 넣어서 2000이 안 되면, 넣은 것 중 하나를 빼고 안 넣은 것 중 긴 걸로 교체
+                        if (currentBin.sum < 2000) {
+                            let swapped = true;
+                            // 미사용 자재 목록 (큰 것부터 정렬)
+                            let unused = avail.filter(p => !usedIds.has(p.localId));
+                            unused.sort((a, b) => b.length - a.length);
+
+                            while (currentBin.sum < 2000 && swapped && unused.length > 0) {
+                                swapped = false;
+                                // 현재 바구니의 조각들을 순회하며 교체 시도
+                                for (let c = 0; c < currentBin.pieces.length; c++) {
+                                    let c_piece = currentBin.pieces[c];
+                                    
+                                    for (let r = 0; r < unused.length; r++) {
+                                        let r_piece = unused[r];
+                                        let diff = r_piece.length - c_piece.length;
+                                        let newSum = currentBin.sum + diff;
+                                        
+                                        // 교체 시 합계가 늘어나고, 상한선을 넘지 않는다면 교체
+                                        if (diff > 0 && newSum <= targetMax) {
+                                            // 교체 수행
+                                            usedIds.delete(c_piece.localId);
+                                            usedIds.add(r_piece.localId);
+                                            
+                                            currentBin.pieces[c] = r_piece;
+                                            currentBin.sum = newSum;
+                                            
+                                            // 목록 갱신
+                                            unused.splice(r, 1); // 사용한 것 제거
+                                            // 뺀 것은 다시 unused로 (굳이 안 넣어도 됨, 이번 루프에선 제외)
+                                            
+                                            swapped = true;
+                                            break;
+                                        }
+                                    }
+                                    if (swapped) break;
+                                }
+                            }
+                        }
+
+                        // 유효성 최종 검사 (2000 ~ targetMax)
+                        if (currentBin.sum >= 2000 && currentBin.sum <= targetMax && currentBin.pieces.length > 0) {
+                             // [조건 1 유지] 내부 조각은 짧은 순서로 정렬 (오름차순)
+                            currentBin.pieces.sort((a, b) => a.length - b.length || a.marking.localeCompare(b.marking));
+                            
+                            bestGlobalPlan.push(currentBin);
+                            avail = avail.filter(p => !usedIds.has(p.localId));
+                            previousSum = currentBin.sum; // 다음 순번은 현재 합계보다 작아야 함
+                        } else {
+                            // 더 이상 조건을 만족하는 조합을 만들 수 없음
+                            break;
+                        }
+                    }
+
+                    // 최종 출력 양식으로 변환
+                    let formattedPatterns = [];
+                    bestGlobalPlan.forEach(bin => {
+                        let cutsObj = {};
+                        bin.pieces.forEach(p => {
+                            let k = `${p.length}_${p.marking}`;
+                            if(!cutsObj[k]) cutsObj[k] = { length: p.length, marking: p.marking, cutCount: 0 };
+                            cutsObj[k].cutCount++;
+                        });
+                        
+                        let pieceArray = Object.values(cutsObj);
+                        // [조건 1] 표시 순서도 짧은 것 부터
+                        pieceArray.sort((a,b) => a.length - b.length);
+                        
+                        let signature = pieceArray.map(p => `${p.length}-${p.cutCount}-${p.marking}`).join('|') + `_${bin.sum}`;
+                        let existing = formattedPatterns.find(fp => fp.signature === signature);
+                        
+                        if (existing) existing.count++;
+                        else {
+                            formattedPatterns.push({
+                                signature: signature, thick: bin.pieces[0].thick, width: bin.pieces[0].width, height: bin.pieces[0].height,
+                                totalLength: bin.sum, count: 1, groups: pieceArray
+                            });
+                        }
+                    });
+
+                    // [조건 2 확인] 결과 목록도 합계 내림차순 정렬
+                    formattedPatterns.sort((a,b) => b.totalLength - a.totalLength);
+                    
+                    resultsBySpec[specKey] = formattedPatterns;
                 }
+                return resultsBySpec;
+            };
 
-                // Total Row
-                const totalRow = sheet.getRow(currentRow);
-                totalRow.height = 30;
-                sheet.mergeCells(`A${currentRow}:E${currentRow}`);
-                sheet.getCell(`A${currentRow}`).value = "합계";
+            const calculateAutoCP = () => {
+                if (currentData.selectedSpecs.length === 0) return alert("계산할 규격을 선택해주세요.");
+                setCalcMessage("4대 절대 규칙을 100% 충족시키는 무결점 CP를 생성 중입니다...");
+                setIsCalculating(true);
                 
-                sheet.getCell(`F${currentRow}`).value = Math.round(totalRaw*100)/100;
-                sheet.getCell(`F${currentRow}`).font = { color: { argb: 'FFD63384' }, bold: true };
-                
-                sheet.mergeCells(`G${currentRow}:H${currentRow}`);
-                sheet.getCell(`G${currentRow}`).value = "총 생산수량";
-                
-                sheet.getCell(`I${currentRow}`).value = Math.round(totalCut);
+                setTimeout(() => {
+                    const itemsToPack = currentData.parsedItems.filter(item => currentData.selectedSpecs.includes(item.specKey));
+                    const resultsBySpec = runSimulationCore(itemsToPack);
+                    updateCurrentData({ cpResult: resultsBySpec });
+                    setIsCalculating(false);
+                    setViewMode('result');
+                }, 100);
+            };
 
-                // Apply Total Styles
-                for(let c=1; c<=14; c++) {
-                    const cell = totalRow.getCell(c);
-                    cell.fill = totalFill;
-                    cell.border = borderStyle;
-                    cell.alignment = alignCenter;
-                    if (!cell.font) cell.font = { name: 'Malgun Gothic', size: 11, bold: true };
-                }
+            const calculateAllAutoCP = () => {
+                const hasData = dongs.some(d => dongDataStore[d].parsedItems.length > 0 && dongDataStore[d].selectedSpecs.length > 0);
+                if (!hasData) return alert("계산할 데이터가 없습니다.");
 
-                // Column Widths
-                sheet.columns = [
-                    { width: 8 }, { width: 8 }, { width: 8 }, { width: 8 }, 
-                    { width: 15 }, { width: 8 }, 
-                    { width: 12 }, { width: 10 }, { width: 8 }, { width: 15 }, 
-                    { width: 12 }, { width: 12 }, { width: 10 }, { width: 20 } 
-                ];
+                setCalcMessage("전체 동 데이터를 무결점 원칙으로 처리 중입니다...");
+                setIsCalculating(true);
 
-                // Filename
-                let filename = title;
-                if (!is100x100) filename += ` ${spec.width}x${spec.height}`;
+                setTimeout(() => {
+                    let storeUpdates = { ...dongDataStore };
+                    let processedCount = 0;
+
+                    for (let dongName of dongs) {
+                        const dData = storeUpdates[dongName];
+                        if (dData.parsedItems.length > 0 && dData.selectedSpecs.length > 0) {
+                            const itemsToPack = dData.parsedItems.filter(item => dData.selectedSpecs.includes(item.specKey));
+                            if (itemsToPack.length > 0) {
+                                const resultsBySpec = runSimulationCore(itemsToPack);
+                                dData.cpResult = resultsBySpec;
+                                processedCount++;
+                            }
+                        }
+                    }
+
+                    setDongDataStore(storeUpdates);
+                    setIsCalculating(false);
+                    setViewMode('result');
+                    alert(`총 ${processedCount}개 동의 계산이 완료되었습니다.`);
+                }, 100);
+            };
+
+            const copyToManual = () => {
+                if(!currentData.cpResult) return;
+                let newManualRows = {};
+                let firstSpec = null;
+                Object.keys(currentData.cpResult).sort().forEach((specKey, i) => {
+                    if (i === 0) firstSpec = specKey;
+                    newManualRows[specKey] = [];
+                    currentData.cpResult[specKey].forEach(pattern => {
+                        let cuts = getEmptyCuts();
+                        pattern.groups.sort((a,b) => a.length - b.length);
+                        pattern.groups.forEach((g, idx) => { if(idx < 8) cuts[idx] = { l: g.length, count: g.cutCount, marking: g.marking }; });
+                        newManualRows[specKey].push({ id: Date.now() + Math.random(), t: pattern.thick.toString(), w: pattern.width, h: pattern.height, qty: pattern.count, cuts: cuts });
+                    });
+                });
+                updateCurrentData({ manualRows: newManualRows, currentManualSpec: firstSpec });
+                setViewMode('manual');
+                alert('수동 편집기로 복사되었습니다.');
+            };
+
+            const startBlankManual = () => {
+                let spec = prompt("규격 입력 (예: 100*100 2.1T)", "100*100 2.1T");
+                if(!spec) return;
+                updateCurrentData({ manualRows: { [spec]: [getEmptyRow()] }, currentManualSpec: spec });
+                setViewMode('manual');
+            };
+
+            const convertManualToResult = () => {
+                let resultsBySpec = {};
+                Object.keys(currentData.manualRows).forEach(specKey => {
+                    let rows = currentData.manualRows[specKey];
+                    if(!resultsBySpec[specKey]) resultsBySpec[specKey] = [];
+                    
+                    rows.forEach(row => {
+                        let validCuts = row.cuts.filter(c => c.l && c.count);
+                        if(validCuts.length === 0) return;
+                        
+                        let totalLength = validCuts.reduce((sum, c) => sum + (parseFloat(c.l) * parseInt(c.count)), 0);
+                        validCuts.sort((a,b) => parseFloat(a.l) - parseFloat(b.l));
+                        
+                        resultsBySpec[specKey].push({
+                            thick: parseFloat(row.t), width: parseInt(row.w), height: parseInt(row.h),
+                            count: parseInt(row.qty), totalLength: totalLength,
+                            groups: validCuts.map(c => ({ length: parseFloat(c.l), cutCount: parseInt(c.count), marking: c.marking || '' }))
+                        });
+                    });
+                });
                 
-                // 2.1t check (Strict)
-                const tVal = parseFloat(String(spec.thickness).replace(/[^0-9.]/g, ''));
-                // 2.1 or 2.10 -> omit. 2.3 -> append.
-                if (Math.abs(tVal - 2.1) > 0.001) filename += ` ${spec.thickness}t`;
-                
-                filename += ".xlsx";
+                // 수동 모드 결과도 무조건 내림차순 정렬 락
+                Object.values(resultsBySpec).forEach(patterns => patterns.sort((a,b) => b.totalLength - a.totalLength));
+                updateCurrentData({ cpResult: resultsBySpec });
+                setViewMode('result');
+            };
 
-                // Save
-                const buffer = await workbook.xlsx.writeBuffer();
-                saveAs(new Blob([buffer]), filename);
-            }
+            const dragItem = useRef(); const dragOverItem = useRef();
+            const handleDragStart = (e, index) => { dragItem.current = index; e.dataTransfer.effectAllowed = "move"; };
+            const handleDragEnter = (e, index) => { dragOverItem.current = index; };
+            const handleDragEnd = () => {
+                if(dragItem.current === null || dragOverItem.current === null) return;
+                const spec = currentData.currentManualSpec;
+                const newRows = [...currentData.manualRows[spec]];
+                const item = newRows.splice(dragItem.current, 1)[0];
+                newRows.splice(dragOverItem.current, 0, item);
+                dragItem.current = null; dragOverItem.current = null;
+                updateCurrentData({ manualRows: { ...currentData.manualRows, [spec]: newRows } });
+            };
+
+            const remainingSummary = useMemo(() => {
+                const summary = {};
+                currentData.parsedItems.forEach(item => {
+                    const key = `${item.specKey}|${item.length}|${item.marking}`;
+                    if (!summary[key]) summary[key] = { ...item, required: 0, used: 0 };
+                    summary[key].required += item.qty;
+                });
+                const status = Object.values(summary);
+                Object.values(currentData.manualRows).forEach(rows => {
+                    rows.forEach(row => {
+                        row.cuts.forEach(cut => {
+                            if (cut.l && cut.count) {
+                                const cutLen = parseFloat(cut.l);
+                                const totalQty = parseInt(cut.count) * parseInt(row.qty || 1);
+                                const spec = `${row.w}*${row.h} ${parseFloat(row.t).toFixed(2)}T`;
+                                const match = status.find(item => item.length === cutLen && item.marking === (cut.marking || '') && item.specKey === spec);
+                                if (match) match.used += totalQty;
+                            }
+                        });
+                    });
+                });
+                return status.sort((a, b) => a.length - b.length);
+            }, [currentData.parsedItems, currentData.manualRows]);
+
+            const downloadExcel = async () => {
+                if (!currentData.cpResult) return alert("저장할 CP 결과가 없습니다.");
+                try {
+                    const borderStyle = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                    const alignCenter = { vertical: 'middle', horizontal: 'center' };
+                    const headerFill = { type: 'pattern', pattern:'solid', fgColor:{argb:'FFFFE699'} };
+                    const totalFill = { type: 'pattern', pattern:'solid', fgColor:{argb:'FFFFFFCC'} };
+
+                    for (let specKey of Object.keys(currentData.cpResult).sort()) {
+                        const patterns = currentData.cpResult[specKey];
+                        if (patterns.length === 0) continue;
+                        const workbook = new ExcelJS.Workbook();
+                        const sheet = workbook.addWorksheet('CP', { pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
+
+                        let comp = projectInfo.company || '업체명'; let site = projectInfo.siteName || '현장명';
+                        const isDefault = specKey.includes('100*100') && specKey.includes('2.1');
+                        let title = `${comp}(${site})`;
+                        if (!projectInfo.isNoDong) title += ` - ${currentDong}`;
+                        if (!isDefault) title += ` [${specKey}]`;
+
+                        sheet.mergeCells('A1:N1');
+                        const titleCell = sheet.getCell('A1'); titleCell.value = title;
+                        titleCell.font = { name: 'Malgun Gothic', size: 16, bold: true };
+
+                        let warnings = [];
+                        if (projectInfo.isBanding) warnings.push("칠밴딩에 동표시 해주세요");
+                        if (projectInfo.isUnder1Ton) warnings.push("1톤 미만 밴딩");
+                        if (projectInfo.memo) warnings.push(projectInfo.memo);
+                        if (warnings.length > 0) {
+                            sheet.mergeCells('A3:G3');
+                            const warnCell = sheet.getCell('A3'); warnCell.value = warnings.join(", ");
+                            warnCell.font = { name: 'Malgun Gothic', size: 12, bold: true, color: { argb: 'FFFF0000' } };
+                        }
+
+                        const headers = ["순번", "두께", "장변", "단변", "선타공길이", "수량", "단척길이", "컷팅 수", "수량", "마킹", "합계", "로스", "컷팅날", "비고"];
+                        const headerRow = sheet.getRow(4); headerRow.values = headers; headerRow.height = 30;
+                        headerRow.eachCell((cell) => { cell.fill = headerFill; cell.font = { name: 'Malgun Gothic', size: 11, bold: true }; cell.alignment = alignCenter; cell.border = borderStyle; });
+
+                        let currentRow = 5; let totalRaw = 0; let totalCut = 0;
+                        
+                        // 엑셀 저장 시에도 무조건 합계 내림차순 보장
+                        patterns.sort((a,b) => b.totalLength - a.totalLength);
+
+                        patterns.forEach((pattern, index) => {
+                            const rowsInBatch = pattern.groups.length;
+                            const totalUsed = pattern.totalLength;
+                            const cuts = pattern.groups.reduce((s, it) => s + it.cutCount, 0);
+                            const bladeLoss = Math.round(cuts * 2.6);
+                            totalRaw += pattern.count; totalCut += (cuts * pattern.count);
+                            const startRow = currentRow;
+
+                            // 내부 단척 오름차순 유지 보장
+                            pattern.groups.sort((a,b) => a.length - b.length);
+
+                            pattern.groups.forEach((group, idx) => {
+                                const row = sheet.getRow(currentRow); row.height = 25;
+                                row.getCell(7).value = group.length; row.getCell(8).value = group.cutCount;
+                                row.getCell(9).value = group.cutCount * pattern.count; row.getCell(10).value = group.marking;
+                                row.getCell(10).alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+
+                                if (idx === 0) {
+                                    row.getCell(1).value = index + 1; row.getCell(2).value = pattern.thick;
+                                    row.getCell(3).value = pattern.width; row.getCell(4).value = pattern.height;
+                                    row.getCell(6).value = pattern.count; row.getCell(11).value = totalUsed;
+                                    row.getCell(12).value = { formula: `E${currentRow}-K${currentRow}`, result: -totalUsed };
+                                    row.getCell(13).value = bladeLoss;
+                                }
+                                for(let c=1; c<=14; c++) { const cell = row.getCell(c); cell.border = borderStyle; if(c!==10) cell.alignment = alignCenter; cell.font = { name: 'Malgun Gothic', size: 11 }; }
+                                currentRow++;
+                            });
+                            if (rowsInBatch > 1) { const endRow = currentRow - 1; ['A','B','C','D','E','F','K','L','M','N'].forEach(col => { sheet.mergeCells(`${col}${startRow}:${col}${endRow}`); }); }
+                        });
+
+                        const totalRow = sheet.getRow(currentRow); totalRow.height = 30;
+                        sheet.mergeCells(`A${currentRow}:E${currentRow}`); sheet.getCell(`A${currentRow}`).value = "합 계";
+                        sheet.getCell(`F${currentRow}`).value = totalRaw;
+                        sheet.mergeCells(`G${currentRow}:H${currentRow}`); sheet.getCell(`G${currentRow}`).value = "합 계";
+                        sheet.getCell(`I${currentRow}`).value = totalCut;
+                        for(let c=1; c<=14; c++) { const cell = totalRow.getCell(c); cell.fill = totalFill; cell.border = borderStyle; cell.alignment = alignCenter; cell.font = { name: 'Malgun Gothic', size: 11, bold: true }; }
+                        sheet.columns = [ { width: 8 }, { width: 8 }, { width: 8 }, { width: 8 }, { width: 12 }, { width: 8 }, { width: 12 }, { width: 8 }, { width: 8 }, { width: 15 }, { width: 12 }, { width: 12 }, { width: 8 }, { width: 15 } ];
+
+                        const buffer = await workbook.xlsx.writeBuffer();
+                        let filename = `${comp}(${site})`;
+                        if (!projectInfo.isNoDong) filename += `_${currentDong}`;
+                        if (!isDefault) filename += `_${specKey}`;
+                        filename += `.xlsx`;
+                        saveAs(new Blob([buffer]), filename);
+                    }
+                } catch(e) { alert("엑셀 저장 중 오류 발생: " + e.message); }
+            };
+
+            return (
+                <div className="flex h-screen overflow-hidden text-gray-800">
+                    <div className="w-[280px] bg-white border-r border-gray-200 flex flex-col z-10 shadow">
+                        <div className="p-6 border-b bg-blue-900 text-white">
+                            <h1 className="text-xl font-bold flex items-center gap-2">🛠️ Smart CP</h1>
+                            <p className="text-xs opacity-80 mt-1">4대 절대 규칙 100% 보장 엔진</p>
+                        </div>
+                        <div className="p-4 flex-1 overflow-auto">
+                            <div className="space-y-3 mb-6">
+                                <label className="text-xs font-bold text-gray-500">프로젝트 정보</label>
+                                <input className="w-full p-2 border rounded text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500" placeholder="업체명 (예: 오서에너지)" value={projectInfo.company} onChange={e => setProjectInfo({...projectInfo, company: e.target.value})} />
+                                <input className="w-full p-2 border rounded text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500" placeholder="현장명 (예: 김천공장)" value={projectInfo.siteName} onChange={e => setProjectInfo({...projectInfo, siteName: e.target.value})} />
+                                <input className="w-full p-2 border rounded text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500" placeholder="기타사항 (메모)" value={projectInfo.memo} onChange={e => setProjectInfo({...projectInfo, memo: e.target.value})} />
+                                <div className="flex flex-col gap-1 mt-2">
+                                    <label className="flex items-center gap-2 text-xs cursor-pointer font-bold text-blue-700">
+                                        <input type="checkbox" checked={projectInfo.isNoDong} onChange={e => setProjectInfo({...projectInfo, isNoDong: e.target.checked})} /> 동 구분 없음
+                                    </label>
+                                    <label className="flex items-center gap-2 text-xs cursor-pointer">
+                                        <input type="checkbox" checked={projectInfo.isBanding} onChange={e => setProjectInfo({...projectInfo, isBanding: e.target.checked})} /> 철밴딩 동표기
+                                    </label>
+                                    <label className="flex items-center gap-2 text-xs cursor-pointer">
+                                        <input type="checkbox" checked={projectInfo.isUnder1Ton} onChange={e => setProjectInfo({...projectInfo, isUnder1Ton: e.target.checked})} /> 1톤 미만 밴딩
+                                    </label>
+                                </div>
+                            </div>
+                            <div className="space-y-2 border-t pt-4">
+                                <button onClick={() => setViewMode('input')} className={`w-full text-left px-4 py-3 rounded-lg font-bold text-sm ${viewMode === 'input' ? 'bg-blue-50 text-blue-800 border border-blue-200' : 'text-gray-600 hover:bg-gray-100'}`}>1. 데이터 입력</button>
+                                <button onClick={() => setViewMode('manual')} className={`w-full text-left px-4 py-3 rounded-lg font-bold text-sm ${viewMode === 'manual' ? 'bg-blue-50 text-blue-800 border border-blue-200' : 'text-gray-600 hover:bg-gray-100'}`}>2. 직접 작성 / 수정</button>
+                                <button onClick={() => setViewMode('result')} className={`w-full text-left px-4 py-3 rounded-lg font-bold text-sm ${viewMode === 'result' ? 'bg-blue-50 text-blue-800 border border-blue-200' : 'text-gray-600 hover:bg-gray-100'}`}>3. 결과 확인 (CP표)</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 flex flex-col relative overflow-hidden bg-gray-50">
+                        {isCalculating && (
+                            <div className="absolute inset-0 bg-white/90 z-50 flex flex-col items-center justify-center">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-800 mb-4"></div>
+                                <p className="text-blue-800 font-bold text-lg">{calcMessage}</p>
+                            </div>
+                        )}
+
+                        {!projectInfo.isNoDong && (
+                            <div className="bg-white border-b border-gray-200 px-6 pt-3 flex gap-2 overflow-x-auto">
+                                {dongs.map(dong => (
+                                    <div key={dong} className="relative group">
+                                        <button onClick={() => setCurrentDong(dong)} className={`px-4 py-2 rounded-t-lg font-bold text-sm border-t border-x ${currentDong === dong ? 'bg-white border-gray-200 text-blue-800 pb-3' : 'bg-gray-100 border-transparent text-gray-500 hover:bg-gray-200'} transition-all`}>
+                                            {dong}
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); deleteDong(dong); }} className={`absolute right-1 top-2 p-1 text-gray-400 hover:text-red-500 ${currentDong === dong ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}><Trash2 /></button>
+                                    </div>
+                                ))}
+                                <button onClick={addDong} className="px-3 py-2 text-gray-500 hover:text-blue-800 font-bold"><Plus /></button>
+                            </div>
+                        )}
+
+                        {viewMode === 'input' && (
+                            <div className="p-6 h-full flex flex-col overflow-auto custom-scrollbar">
+                                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex justify-between items-center mb-4">
+                                    <div className="flex gap-2">
+                                        <button onClick={() => updateCurrentData({ inputMode: 'sales', colMapping: { 1: 'width', 2: 'height', 3: 'thickness', 4: 'length', 8: 'qty', 13: 'marking' } })} className={`px-4 py-2 text-sm font-bold rounded ${currentData.inputMode === 'sales' ? 'bg-blue-800 text-white shadow' : 'bg-gray-100 text-gray-600'}`}>영업 양식</button>
+                                        <button onClick={() => updateCurrentData({ inputMode: 'design', colMapping: { 2: 'width', 3: 'height', 4: 'thickness', 5: 'length', 7: 'qty', 8: 'marking' } })} className={`px-4 py-2 text-sm font-bold rounded ${currentData.inputMode === 'design' ? 'bg-blue-800 text-white shadow' : 'bg-gray-100 text-gray-600'}`}>설계 양식</button>
+                                    </div>
+                                    <div className="flex gap-2 items-center">
+                                        <button onClick={startBlankManual} className="px-4 py-2 border-2 border-dashed border-indigo-400 text-indigo-700 bg-indigo-50 text-sm font-bold rounded hover:bg-indigo-100">✨ 처음부터 직접 짜기</button>
+                                        <div className="w-px h-6 bg-gray-300 mx-2"></div>
+                                        <button onClick={extractData} className="px-4 py-2 bg-gray-700 text-white text-sm font-bold rounded hover:bg-gray-800">1단계: 현재 동 데이터 읽기</button>
+                                        <button onClick={calculateAutoCP} disabled={currentData.selectedSpecs.length===0} className={`px-4 py-2 text-sm font-bold rounded text-white ${currentData.selectedSpecs.length>0 ? 'bg-blue-500 hover:bg-blue-600 shadow' : 'bg-gray-400 cursor-not-allowed'}`}>2단계: 현재 동 계산</button>
+                                        <button onClick={calculateAllAutoCP} className="px-4 py-2 text-sm font-bold rounded text-white bg-blue-800 hover:bg-blue-900 shadow flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg> 전체 동 한 번에 계산</button>
+                                    </div>
+                                </div>
+                                <div className="flex-1 flex gap-4 overflow-hidden">
+                                    <div className="flex-[3] bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col relative overflow-hidden">
+                                        <div className="p-2 border-b bg-gray-50 flex justify-end">
+                                            <button onClick={resetExcel} className="flex items-center gap-1 text-xs font-bold text-red-500 hover:bg-red-50 px-2 py-1 rounded"><Refresh /> 초기화 (다시 붙여넣기)</button>
+                                        </div>
+                                        {currentData.gridData.length === 0 ? (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-gray-50"><textarea className="absolute inset-0 opacity-0 cursor-text" onPaste={handlePaste} autoFocus /><div className="text-center text-gray-400 pointer-events-none"><p className="text-4xl font-bold mb-3">📋 Ctrl + V</p><p>엑셀 견적서 표를 여기에 붙여넣으세요</p></div></div>
+                                        ) : (
+                                            <div className="h-full overflow-auto custom-scrollbar">
+                                                <table className="w-full text-xs border-collapse">
+                                                    <thead className="sticky top-0 bg-white shadow-sm z-10">
+                                                        <tr>
+                                                            <th className="p-2 border bg-gray-100 w-10 text-center">#</th>
+                                                            {currentData.gridData[0].map((_, cIdx) => (
+                                                                <th key={cIdx} className="p-1 border min-w-[80px]">
+                                                                    <select className={`w-full p-1 border rounded text-xs font-bold outline-none ${['length', 'qty'].includes(currentData.colMapping[cIdx]) ? 'bg-blue-100 text-blue-700' : 'bg-gray-50'}`} value={currentData.colMapping[cIdx] || ''} onChange={e => updateCurrentData({ colMapping: {...currentData.colMapping, [cIdx]: e.target.value} })}>
+                                                                        <option value="">- 무시 -</option><option value="thickness">두께(T)</option><option value="width">장변(W)</option><option value="height">단변(H)</option><option value="length">📏 길이</option><option value="qty">🔢 수량</option><option value="marking">마킹</option>
+                                                                    </select>
+                                                                </th>
+                                                            ))}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {currentData.gridData.slice(0, 50).map((row, rIdx) => (
+                                                            <tr key={rIdx} className="hover:bg-blue-50">
+                                                                <td className="p-2 border text-center text-gray-400 bg-gray-50">{rIdx + 1}</td>
+                                                                {row.map((cell, cIdx) => (
+                                                                    <td key={cIdx} className="border p-0 h-8">
+                                                                        <input className="excel-input-cell" value={cell} onChange={(e) => handleGridEdit(rIdx, cIdx, e.target.value)} />
+                                                                    </td>
+                                                                ))}
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex-[1] bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+                                        <div className="p-3 bg-blue-800 text-white font-bold text-sm text-center">계산할 규격 선택</div>
+                                        <div className="flex-1 p-3 overflow-auto custom-scrollbar space-y-2">
+                                            {currentData.availableSpecs.length === 0 ? <div className="text-gray-400 text-center mt-10">1단계 버튼을 눌러주세요</div> : currentData.availableSpecs.map(spec => (
+                                                <label key={spec} className="flex items-center gap-2 p-2 border rounded hover:bg-gray-50 cursor-pointer">
+                                                    <input type="checkbox" className="w-4 h-4 text-blue-600" checked={currentData.selectedSpecs.includes(spec)} onChange={() => toggleSpec(spec)} />
+                                                    <span className="font-bold text-gray-700">{spec}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {viewMode === 'manual' && (
+                            <div className="p-6 h-full flex gap-4 overflow-hidden">
+                                <div className="flex-1 flex flex-col bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
+                                    <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+                                        <div className="flex gap-2">
+                                            {Object.keys(currentData.manualRows).length > 0 ? Object.keys(currentData.manualRows).map(spec => (
+                                                <button key={spec} onClick={() => updateCurrentData({currentManualSpec: spec})} className={`px-4 py-2 font-bold text-sm rounded ${currentData.currentManualSpec === spec ? 'bg-indigo-600 text-white shadow' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}>{spec}</button>
+                                            )) : <span className="text-gray-400 font-bold">수동 작성 편집기</span>}
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => { if(currentData.currentManualSpec) { const newRows = [...currentData.manualRows[currentData.currentManualSpec], getEmptyRow()]; updateCurrentData({manualRows: {...currentData.manualRows, [currentData.currentManualSpec]: newRows}});} }} className="px-4 py-2 border border-dashed border-gray-400 text-gray-600 text-sm font-bold rounded hover:bg-white">+ 빈 행 추가</button>
+                                            <button onClick={convertManualToResult} className="px-5 py-2 bg-green-600 text-white text-sm font-bold rounded shadow hover:bg-green-700">수정 내용으로 결과보기</button>
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 overflow-auto custom-scrollbar p-0 relative">
+                                        {!currentData.currentManualSpec ? <div className="p-10 text-center text-gray-400">데이터가 없습니다. 처음부터 짜거나 복사해오세요.</div> : (
+                                            <table className="w-full text-xs text-center border-collapse bg-white">
+                                                <thead className="sticky top-0 bg-white shadow-sm z-10">
+                                                    <tr className="bg-gray-100 text-gray-600">
+                                                        <th className="border p-2 w-12">이동</th><th className="border p-2">두께</th><th className="border p-2">장변</th><th className="border p-2">단변</th><th className="border p-2 bg-yellow-100 text-yellow-800">원본수량</th>
+                                                        <th className="border p-2 bg-blue-50 text-blue-800">단척길이</th><th className="border p-2 bg-blue-50 text-blue-800">컷팅수</th><th className="border p-2 bg-blue-50 text-blue-800">마킹</th>
+                                                        <th className="border p-2 bg-red-50 text-red-800 w-24">실시간 합계</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {currentData.manualRows[currentData.currentManualSpec].map((row, rIdx) => {
+                                                        const validCuts = row.cuts.filter(c => c.l && c.count);
+                                                        const rowSum = validCuts.reduce((acc, c) => acc + (parseFloat(c.l) * parseInt(c.count)), 0);
+                                                        let sumBgColor = 'bg-gray-50 text-gray-500';
+                                                        if (rowSum > 5850) sumBgColor = 'bg-red-100 text-red-600 font-bold';
+                                                        else if (rowSum > 0 && rowSum < 2000) sumBgColor = 'bg-yellow-100 text-yellow-700 font-bold';
+                                                        else if (rowSum >= 2000) sumBgColor = 'bg-green-100 text-green-700 font-bold';
+                                                        
+                                                        return row.cuts.map((cut, cIdx) => (
+                                                            <tr key={`${row.id}-${cIdx}`} draggable={cIdx === 0} onDragStart={(e) => handleDragStart(e, rIdx)} onDragEnter={(e) => handleDragEnter(e, rIdx)} onDragEnd={handleDragEnd} onDragOver={(e) => e.preventDefault()} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                                                                {cIdx === 0 && (
+                                                                    <>
+                                                                        <td rowSpan={8} className="border bg-gray-50">
+                                                                            <div className="flex flex-col items-center justify-center gap-2 p-1">
+                                                                                <div className="drag-handle p-1" title="드래그해서 순서 이동"><DragIcon /></div>
+                                                                                <button onClick={() => { const newRows = currentData.manualRows[currentData.currentManualSpec].filter((_, i) => i !== rIdx); updateCurrentData({manualRows: {...currentData.manualRows, [currentData.currentManualSpec]: newRows}}); }} className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"><Trash2 /></button>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td rowSpan={8} className="border"><input className="input-cell bg-yellow-50" value={row.t} onChange={e => { const n = [...currentData.manualRows[currentData.currentManualSpec]]; n[rIdx].t = e.target.value; updateCurrentData({manualRows: {...currentData.manualRows, [currentData.currentManualSpec]: n}}); }} /></td>
+                                                                        <td rowSpan={8} className="border"><input className="input-cell bg-yellow-50" value={row.w} onChange={e => { const n = [...currentData.manualRows[currentData.currentManualSpec]]; n[rIdx].w = e.target.value; updateCurrentData({manualRows: {...currentData.manualRows, [currentData.currentManualSpec]: n}}); }} /></td>
+                                                                        <td rowSpan={8} className="border"><input className="input-cell bg-yellow-50" value={row.h} onChange={e => { const n = [...currentData.manualRows[currentData.currentManualSpec]]; n[rIdx].h = e.target.value; updateCurrentData({manualRows: {...currentData.manualRows, [currentData.currentManualSpec]: n}}); }} /></td>
+                                                                        <td rowSpan={8} className="border"><input type="number" className="input-cell bg-yellow-50 font-bold text-lg text-yellow-900" value={row.qty} onChange={e => { const n = [...currentData.manualRows[currentData.currentManualSpec]]; n[rIdx].qty = e.target.value; updateCurrentData({manualRows: {...currentData.manualRows, [currentData.currentManualSpec]: n}}); }} /></td>
+                                                                    </>
+                                                                )}
+                                                                <td className="border p-0"><input type="number" className="input-cell" value={cut.l} onChange={e => { const n = [...currentData.manualRows[currentData.currentManualSpec]]; n[rIdx].cuts[cIdx].l = e.target.value; updateCurrentData({manualRows: {...currentData.manualRows, [currentData.currentManualSpec]: n}}); }} /></td>
+                                                                <td className="border p-0"><input type="number" className="input-cell" value={cut.count} onChange={e => { const n = [...currentData.manualRows[currentData.currentManualSpec]]; n[rIdx].cuts[cIdx].count = e.target.value; updateCurrentData({manualRows: {...currentData.manualRows, [currentData.currentManualSpec]: n}}); }} /></td>
+                                                                <td className="border p-0"><input className="input-cell" value={cut.marking} onChange={e => { const n = [...currentData.manualRows[currentData.currentManualSpec]]; n[rIdx].cuts[cIdx].marking = e.target.value; updateCurrentData({manualRows: {...currentData.manualRows, [currentData.currentManualSpec]: n}}); }} /></td>
+                                                                {cIdx === 0 && <td rowSpan={8} className={`border text-base transition-colors ${sumBgColor}`}>{rowSum === 0 ? '-' : rowSum.toLocaleString()}</td>}
+                                                            </tr>
+                                                        ));
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="w-[340px] bg-white rounded-xl shadow border flex flex-col overflow-hidden">
+                                    <div className="p-3 bg-gray-800 text-white text-sm font-bold text-center">실시간 자재 현황 (추출 데이터 기준)</div>
+                                    <div className="flex-1 overflow-auto custom-scrollbar p-0">
+                                        <table className="w-full text-xs text-center border-collapse">
+                                            <thead className="sticky top-0 bg-white shadow-sm">
+                                                <tr className="bg-gray-100 border-b"><th className="p-2">규격</th><th className="p-2">길이</th><th className="p-2">필요</th><th className="p-2">잔여</th><th className="p-2">마킹</th></tr>
+                                            </thead>
+                                            <tbody>
+                                                {remainingSummary.map((item, i) => {
+                                                    const remaining = item.required - item.used;
+                                                    return (
+                                                        <tr key={i} className={`border-b ${remaining === 0 ? 'bg-gray-50 text-gray-400' : 'hover:bg-blue-50'}`}>
+                                                            <td className="p-2">{item.width}*{item.height}</td>
+                                                            <td className="p-2 font-bold">{item.length}</td>
+                                                            <td className="p-2">{item.required}</td>
+                                                            <td className={`p-2 font-bold ${remaining < 0 ? 'text-red-500' : (remaining === 0 ? 'text-green-500' : 'text-blue-600')}`}>{remaining}</td>
+                                                            <td className="p-2 text-left truncate max-w-[60px]" title={item.marking}>{item.marking}</td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                                {remainingSummary.length === 0 && <tr><td colSpan="5" className="p-8 text-gray-400 text-center">1번 탭에서 데이터를 먼저 읽어주세요.</td></tr>}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {viewMode === 'result' && (
+                            <div className="p-8 h-full overflow-auto custom-scrollbar bg-white">
+                                {!currentData.cpResult ? (
+                                    <div className="text-center text-gray-400 mt-20 text-lg">계산된 결과가 없습니다.</div>
+                                ) : (
+                                    <div className="max-w-[1200px] mx-auto pb-20">
+                                        <div className="flex justify-end gap-3 mb-6">
+                                            <button onClick={copyToManual} className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2 rounded-lg shadow font-bold hover:bg-indigo-700 transition"><Copy /> 이 결과를 복사해서 수동으로 자유롭게 수정하기</button>
+                                            <button onClick={downloadExcel} className="flex items-center gap-2 bg-green-600 text-white px-5 py-2 rounded-lg shadow font-bold hover:bg-green-700 transition"><Download /> 규격별 엑셀 파일로 다운로드</button>
+                                        </div>
+                                        {Object.keys(currentData.cpResult).sort().map((specKey, mapIndex) => {
+                                            const patterns = currentData.cpResult[specKey];
+                                            if(patterns.length === 0) return null;
+                                            
+                                            let comp = projectInfo.company || '업체명'; let site = projectInfo.siteName || '현장명';
+                                            let isDefault = specKey.includes('100*100') && specKey.includes('2.1');
+                                            let displayTitle = `${comp}(${site})`;
+                                            if (!projectInfo.isNoDong) displayTitle += ` - ${currentDong}`;
+                                            if (!isDefault) displayTitle += ` [${specKey}]`;
+
+                                            let warnings = [];
+                                            if (projectInfo.isBanding) warnings.push("칠밴딩에 동표시 해주세요");
+                                            if (projectInfo.isUnder1Ton) warnings.push("1톤 미만 밴딩");
+                                            if (projectInfo.memo) warnings.push(projectInfo.memo);
+
+                                            return (
+                                                <div key={specKey} className={mapIndex > 0 ? "mt-16 pt-8 border-t-2 border-dashed border-gray-300" : ""}>
+                                                    <div className="spec-title">규격: {specKey}</div>
+                                                    <table className="w-full mb-3 border-none">
+                                                        <tbody>
+                                                            <tr>
+                                                                <td className="text-xl font-bold text-left border-none pb-2">{displayTitle}</td>
+                                                                <td className="text-sm text-right border-none pb-2">날짜: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 담당자: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                    {warnings.length > 0 && <div className="text-red-600 font-bold text-lg mb-2">{warnings.join(', ')}</div>}
+                                                    <table className="excel-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th style={{width:'4%'}}>순번</th><th style={{width:'6%'}}>두께</th><th style={{width:'6%'}}>장변</th><th style={{width:'6%'}}>단변</th><th style={{width:'8%'}}>선타공길이</th><th style={{width:'5%'}}>수량</th><th style={{width:'10%'}}>단척길이</th><th style={{width:'8%'}}>컷팅 수</th><th style={{width:'6%'}}>수량</th><th style={{width:'15%'}}>마킹</th><th style={{width:'8%'}}>합계</th><th style={{width:'8%'}}>로스</th><th style={{width:'6%'}}>컷팅날</th><th style={{width:'4%'}}>비고</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {patterns.map((pattern, index) => {
+                                                                let piecesCount = pattern.groups.length;
+                                                                let totalCuts = pattern.groups.reduce((sum, g) => sum + g.cutCount, 0);
+                                                                let bladeLoss = (totalCuts * 2.6).toFixed(1).replace('.0', '');
+                                                                let displayLoss = `- ${pattern.totalLength.toLocaleString()}`; 
+                                                                
+                                                                return pattern.groups.map((group, pIdx) => (
+                                                                    <tr key={`${index}-${pIdx}`}>
+                                                                        {pIdx === 0 && <td rowSpan={piecesCount}>{index + 1}</td>}
+                                                                        {pIdx === 0 && <td rowSpan={piecesCount}>{pattern.thick.toFixed(2)}</td>}
+                                                                        {pIdx === 0 && <td rowSpan={piecesCount}>{pattern.width}</td>}
+                                                                        {pIdx === 0 && <td rowSpan={piecesCount}>{pattern.height}</td>}
+                                                                        {pIdx === 0 && <td rowSpan={piecesCount}></td>}
+                                                                        {pIdx === 0 && <td rowSpan={piecesCount}>{pattern.count}</td>}
+                                                                        <td style={{borderBottom: pIdx === piecesCount - 1 ? '1px solid #000' : '1px dashed #999'}}>{group.length}</td>
+                                                                        <td style={{borderBottom: pIdx === piecesCount - 1 ? '1px solid #000' : '1px dashed #999'}}>{group.cutCount}</td>
+                                                                        <td style={{borderBottom: pIdx === piecesCount - 1 ? '1px solid #000' : '1px dashed #999'}}>{group.cutCount * pattern.count}</td>
+                                                                        <td style={{borderBottom: pIdx === piecesCount - 1 ? '1px solid #000' : '1px dashed #999', textAlign: 'left', paddingLeft: '8px'}}>{group.marking}</td>
+                                                                        {pIdx === 0 && <td rowSpan={piecesCount}>{pattern.totalLength.toLocaleString()}</td>}
+                                                                        {pIdx === 0 && <td rowSpan={piecesCount}>{displayLoss}</td>}
+                                                                        {pIdx === 0 && <td rowSpan={piecesCount}>{bladeLoss}</td>}
+                                                                        {pIdx === 0 && <td rowSpan={piecesCount}></td>}
+                                                                    </tr>
+                                                                ));
+                                                            })}
+                                                            <tr style={{backgroundColor: '#fff2cc', fontWeight: 'bold'}}>
+                                                                <td colSpan="5">합 계</td>
+                                                                <td>{patterns.reduce((sum, p) => sum + p.count, 0)}</td>
+                                                                <td colSpan="2">합 계</td>
+                                                                <td>{patterns.reduce((sum, p) => sum + p.groups.reduce((s, c) => s + (c.cutCount * p.count), 0), 0)}</td>
+                                                                <td colSpan="5"></td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
         }
-    }
 
-    window.switchSpecTab = function(idx) {
-        document.querySelectorAll('.spec-tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.spec-content').forEach(c => c.classList.remove('active'));
-        
-        const buttons = document.querySelectorAll('.spec-tab-btn');
-        if(buttons[idx]) buttons[idx].classList.add('active');
-        
-        const content = document.getElementById(`spec-content-${idx}`);
-        if(content) content.classList.add('active');
-    }
-
-    window.calcLoss = function(seq) {
-        const preHoleInput = document.getElementById(`prehole-${seq}`);
-        const totalEl = document.getElementById(`total-${seq}`);
-        const lossEl = document.getElementById(`loss-${seq}`);
-        const preHole = parseFloat(preHoleInput.value) || 0;
-        const total = parseFloat(totalEl.getAttribute('data-val')) || 0;
-        const loss = preHole - total;
-        lossEl.innerText = loss.toLocaleString();
-    };
-</script>
-
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
