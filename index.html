@@ -8,7 +8,7 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- 엑셀 저장 및 파일 생성 라이브러리 (App 2 전용) -->
+    <!-- 엑셀 저장 및 파일 생성 라이브러리 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
@@ -49,10 +49,18 @@
         .modal-fade-in { animation: fadeIn 0.2s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
-        .input-cell {
-            width: 100%; height: 100%; border: none; background: transparent; text-align: center; outline: none;
-        }
+        .input-cell { width: 100%; height: 100%; border: none; background: transparent; text-align: center; outline: none; }
         .input-cell:focus { background-color: #e0f2fe; font-weight: bold; }
+
+        /* 숫자 입력 필드의 증감 화살표(스피너) 숨김 처리 */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
 
         .loader {
             border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%;
@@ -76,12 +84,9 @@
         const { useState, useEffect, useRef, memo, useCallback, useMemo } = React;
 
         // --- Icons ---
-        const IconWrapper = ({ children, size = 20, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                {children}
-            </svg>
-        );
+        const IconWrapper = ({ children, size = 20, className = "" }) => (<svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>);
         const Trash2 = (props) => <IconWrapper {...props}><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" x2="10" y1="11" y2="17" /><line x1="14" x2="14" y1="11" y2="17" /></IconWrapper>;
+        const Plus = (props) => <IconWrapper {...props}><path d="M5 12h14" /><path d="M12 5v14" /></IconWrapper>;
         const Calculator = (props) => <IconWrapper {...props}><rect width="16" height="20" x="4" y="2" rx="2" /><line x1="8" x2="16" y1="6" y2="6" /><line x1="16" x2="16" y1="14" y2="18" /><path d="M16 10h.01" /><path d="M12 10h.01" /><path d="M8 10h.01" /><path d="M12 14h.01" /><path d="M8 14h.01" /><path d="M12 18h.01" /><path d="M8 18h.01" /></IconWrapper>;
         const FileDown = (props) => <IconWrapper {...props}><path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4" /><polyline points="14 2 14 8 20 8" /><path d="M2 15h10" /><path d="M9 18l3-3-3-3" /></IconWrapper>;
         const Building = (props) => <IconWrapper {...props}><rect x="4" y="2" width="16" height="20" rx="2" ry="2" /><path d="M9 22v-4h6v4" /><path d="M8 6h.01" /><path d="M16 6h.01" /><path d="M8 10h.01" /><path d="M16 10h.01" /><path d="M8 14h.01" /><path d="M16 14h.01" /><path d="M8 18h.01" /><path d="M16 18h.01" /></IconWrapper>;
@@ -95,6 +100,9 @@
         const Check = (props) => <IconWrapper {...props}><polyline points="20 6 9 17 4 12"></polyline></IconWrapper>;
         const X = (props) => <IconWrapper {...props}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></IconWrapper>;
         const ListTree = (props) => <IconWrapper {...props}><path d="M21 12h-8"/><path d="M21 6H8"/><path d="M21 18h-8"/><path d="M12 12s-3-3-3-3v6s-3-3-3-3"/></IconWrapper>;
+        const Save = (props) => <IconWrapper {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></IconWrapper>;
+        const FileSpreadsheet = (props) => <IconWrapper {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><path d="M8 13h2" /><path d="M8 17h2" /><path d="M14 13h2" /><path d="M14 17h2" /></IconWrapper>;
+        const RotateCcw = (props) => <IconWrapper {...props}><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></IconWrapper>;
 
         const UNIT_WEIGHT_DATA = {
             "100-100-3.2": 9.52, "100-100-3.0": 8.96, "100-100-2.3": 6.95, "100-100-2.1": 6.37,
@@ -124,79 +132,42 @@
             return UNIT_WEIGHT_DATA[key] || 0;
         };
 
-        // --- Modals for Per-Dong Version Selection ---
-        const DongModeSelector = ({ dongs, dongModes, setDongModes }) => (
-            <div className="mt-3 max-h-40 overflow-y-auto border border-gray-200 rounded-lg bg-gray-50 p-2 space-y-2">
-                {dongs.map(dName => (
-                    <div key={dName} className="flex justify-between items-center text-sm bg-white p-2 rounded shadow-sm">
-                        <span className="font-bold text-gray-700 flex items-center gap-1"><Building size={14} className="text-gray-400"/> {dName}</span>
-                        <select className="border-gray-300 rounded text-xs font-bold p-1 bg-gray-50 focus:ring-2 focus:ring-blue-400 outline-none"
-                            value={dongModes[dName] || 'min_rows'}
-                            onChange={(e) => setDongModes(prev => ({...prev, [dName]: e.target.value}))}
-                        >
-                            <option value="min_rows">작업 편의</option>
-                            <option value="min_loss">LOSS 최소화</option>
-                            <option value="manual_result">수동 편집 결과</option>
-                        </select>
-                    </div>
-                ))}
-            </div>
-        );
-
-        const ExcelExportModal = ({ isOpen, onClose, onConfirm, dongs, resultsByDong }) => {
-            if (!isOpen) return null;
-            const [targetType, setTargetType] = useState('current');
-            const [modeType, setModeType] = useState('min_rows'); // For current dong
-            const [dongModes, setDongModes] = useState(() => dongs.reduce((acc, d) => ({...acc, [d]: 'min_rows'}), {}));
-
-            return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-                    <div className="bg-white rounded-xl shadow-2xl p-6 w-[420px] modal-fade-in relative">
-                        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X size={20} /></button>
-                        <h3 className="text-xl font-bold mb-6 flex items-center gap-2"><FileDown className="text-green-600" /> 엑셀 다운로드 (스마트 설정)</h3>
-                        <div className="space-y-6">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">저장 대상 범위</label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <button onClick={() => setTargetType('current')} className={`p-3 rounded-lg border text-sm font-bold flex items-center justify-center gap-2 transition ${targetType === 'current' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 hover:bg-gray-50'}`}>현재 동만</button>
-                                    <button onClick={() => setTargetType('all')} className={`p-3 rounded-lg border text-sm font-bold flex items-center justify-center gap-2 transition ${targetType === 'all' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 hover:bg-gray-50'}`}>전체 동 병합</button>
-                                </div>
-                            </div>
-                            
-                            {targetType === 'current' ? (
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">저장 버전 선택</label>
-                                    <div className="space-y-2">
-                                        <button onClick={() => setModeType('min_rows')} className={`w-full p-3 rounded-lg border text-left text-sm font-medium transition flex justify-between items-center ${modeType === 'min_rows' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:bg-gray-50'}`}>
-                                            <span>① 작업 편의 (Work Convenience)</span>{modeType === 'min_rows' && <Check size={16} />}
-                                        </button>
-                                        <button onClick={() => setModeType('min_loss')} className={`w-full p-3 rounded-lg border text-left text-sm font-medium transition flex justify-between items-center ${modeType === 'min_loss' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:bg-gray-50'}`}>
-                                            <span>② LOSS 최소화 (자재 절약)</span>{modeType === 'min_loss' && <Check size={16} />}
-                                        </button>
-                                        <button onClick={() => setModeType('manual_result')} className={`w-full p-3 rounded-lg border text-left text-sm font-medium transition flex justify-between items-center ${modeType === 'manual_result' ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-200 hover:bg-gray-50'}`}>
-                                            <span>③ 수동 편집 결과</span>{modeType === 'manual_result' && <Check size={16} />}
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">동별 버전 선택</label>
-                                    <p className="text-[10px] text-gray-500 mb-2">각 동마다 어떤 결과물(작업편의/LOSS최소/수동)을 병합할지 선택하세요.</p>
-                                    <DongModeSelector dongs={dongs} dongModes={dongModes} setDongModes={setDongModes} />
-                                </div>
-                            )}
-                        </div>
-                        <button onClick={() => onConfirm(targetType, targetType === 'current' ? modeType : dongModes)} className="w-full mt-8 bg-green-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-green-700 transition flex justify-center items-center gap-2"><FileDown size={18} /> 엑셀 파일 생성</button>
-                    </div>
-                </div>
-            );
+        // --- Helper Function: Parse Items from Grid ---
+        const parseItemsFromGrid = (gridData, colMapping, defaultSpec, defaultThickness) => {
+            const lenIdx = Object.keys(colMapping).find(key => colMapping[key] === 'length');
+            const qtyIdx = Object.keys(colMapping).find(key => colMapping[key] === 'qty');
+            if (!lenIdx || !qtyIdx) return [];
+            const wIdx = Object.keys(colMapping).find(key => colMapping[key] === 'width');
+            const hIdx = Object.keys(colMapping).find(key => colMapping[key] === 'height');
+            const tIdx = Object.keys(colMapping).find(key => colMapping[key] === 'thickness');
+            const markIdx = Object.keys(colMapping).find(key => colMapping[key] === 'marking');
+            let items = []; let rowCounter = 0;
+            gridData.forEach((row) => {
+                let rawLen = row[lenIdx]?.trim().replace(/,/g, '');
+                let rawQty = row[qtyIdx]?.trim().replace(/폰/g, '').replace(/,/g, '');
+                if (!rawLen || !rawQty) return;
+                let length = parseFloat(rawLen);
+                const qty = parseInt(rawQty, 10);
+                if (isNaN(length) || isNaN(qty) || qty <= 0) return;
+                if (length < 20) length = Math.round(length * 1000); else length = Math.round(length);
+                let w = wIdx ? row[wIdx]?.trim().replace(/[^0-9.]/g, '') : '';
+                let h = hIdx ? row[hIdx]?.trim().replace(/[^0-9.]/g, '') : '';
+                let t = tIdx ? row[tIdx]?.trim().replace(/[^0-9.]/g, '') : '';
+                let marking = markIdx ? (row[markIdx]?.trim() || '') : '';
+                if (!w) w = defaultSpec.split('*')[0] || '100';
+                if (!h) h = defaultSpec.split('*')[1] || '100';
+                if (!t) t = defaultThickness;
+                const dims = [parseInt(w), parseInt(h)].sort((a, b) => b - a);
+                const specKey = `${dims[0]}*${dims[1]} ${t}T`;
+                items.push({ id: rowCounter++, length, qty, marking, specKey, w: dims[0], h: dims[1], t: t });
+            });
+            return items;
         };
 
         const StockDeductModal = ({ isOpen, onClose, onConfirm, dongs, isLoggedIn, handleLogin }) => {
             if (!isOpen) return null;
-            const [targetType, setTargetType] = useState('current');
-            const [modeType, setModeType] = useState('min_rows');
-            const [dongModes, setDongModes] = useState(() => dongs.reduce((acc, d) => ({...acc, [d]: 'min_rows'}), {}));
+            // 차감은 중복 차감을 막기 위해 동별로 하나의 버전만 선택하도록 Radio(select) 유지
+            const [dongModes, setDongModes] = useState(() => dongs.reduce((acc, d) => ({...acc, [d]: 'manual_result'}), {})); // App2 기본은 수동
 
             return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -212,34 +183,32 @@
                         ) : (
                             <div className="space-y-6">
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">차감 대상 범위</label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <button onClick={() => setTargetType('current')} className={`p-3 rounded-lg border text-sm font-bold flex items-center justify-center gap-2 transition ${targetType === 'current' ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-200 hover:bg-gray-50'}`}>현재 동만</button>
-                                        <button onClick={() => setTargetType('all')} className={`p-3 rounded-lg border text-sm font-bold flex items-center justify-center gap-2 transition ${targetType === 'all' ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-200 hover:bg-gray-50'}`}>전체 동</button>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">동별 차감 기준 선택</label>
+                                    <p className="text-[10px] text-gray-500 mb-2">※ 중복 차감을 방지하기 위해 각 동마다 하나의 기준만 선택할 수 있습니다.</p>
+                                    <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg bg-gray-50 p-2 space-y-2 custom-scrollbar">
+                                        {dongs.map(dName => (
+                                            <div key={dName} className="flex justify-between items-center text-sm bg-white p-2 rounded shadow-sm">
+                                                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                                    <input type="checkbox" className="w-4 h-4 text-red-500" 
+                                                        checked={!!dongModes[dName]} 
+                                                        onChange={(e) => setDongModes(prev => ({...prev, [dName]: e.target.checked ? 'manual_result' : null}))} 
+                                                    />
+                                                    <span className="font-bold text-gray-700">{dName}</span>
+                                                </label>
+                                                <select className="border-gray-300 rounded text-xs font-bold p-1 bg-gray-50 focus:ring-2 focus:ring-blue-400 outline-none"
+                                                    value={dongModes[dName] || 'manual_result'}
+                                                    disabled={!dongModes[dName]}
+                                                    onChange={(e) => setDongModes(prev => ({...prev, [dName]: e.target.value}))}
+                                                >
+                                                    <option value="min_rows">작업 편의</option>
+                                                    <option value="min_loss">LOSS 최소화</option>
+                                                    <option value="manual_result">수동 편집 결과</option>
+                                                </select>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
-                                {targetType === 'current' ? (
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">사용할 CP 버전</label>
-                                        <div className="space-y-2">
-                                            <button onClick={() => setModeType('min_rows')} className={`w-full p-3 rounded-lg border text-left text-sm font-medium transition flex justify-between items-center ${modeType === 'min_rows' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:bg-gray-50'}`}>
-                                                <span>① 작업 편의 (Work Convenience)</span>{modeType === 'min_rows' && <Check size={16} />}
-                                            </button>
-                                            <button onClick={() => setModeType('min_loss')} className={`w-full p-3 rounded-lg border text-left text-sm font-medium transition flex justify-between items-center ${modeType === 'min_loss' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:bg-gray-50'}`}>
-                                                <span>② LOSS 최소화 (자재 절약)</span>{modeType === 'min_loss' && <Check size={16} />}
-                                            </button>
-                                            <button onClick={() => setModeType('manual_result')} className={`w-full p-3 rounded-lg border text-left text-sm font-medium transition flex justify-between items-center ${modeType === 'manual_result' ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-200 hover:bg-gray-50'}`}>
-                                                <span>③ 수동 편집 결과</span>{modeType === 'manual_result' && <Check size={16} />}
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">동별 버전 선택</label>
-                                        <DongModeSelector dongs={dongs} dongModes={dongModes} setDongModes={setDongModes} />
-                                    </div>
-                                )}
-                                <button onClick={() => onConfirm(targetType, targetType === 'current' ? modeType : dongModes)} className="w-full mt-8 bg-red-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-red-700 transition flex justify-center items-center gap-2"><Cloud size={18} /> 재고 차감 실행</button>
+                                <button onClick={() => onConfirm(dongModes)} className="w-full mt-8 bg-red-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-red-700 transition flex justify-center items-center gap-2"><Cloud size={18} /> 재고 차감 실행</button>
                             </div>
                         )}
                     </div>
@@ -247,65 +216,124 @@
             );
         };
 
-        const DongTabs = ({ dongs, currentDong, setCurrentDong }) => (
+        const DongTabs = ({ dongs, currentDong, setCurrentDong, addDong, deleteDong, renameDong }) => (
             <div className="flex gap-2 mb-4 overflow-x-auto pb-2 border-b items-center print:hidden">
                 {dongs.map(dong => (
-                    <button key={dong} onClick={() => setCurrentDong(dong)} className={`px-4 py-2 rounded-t-lg font-bold text-sm whitespace-nowrap transition ${currentDong === dong ? 'bg-white border-x border-t border-gray-200 text-blue-600 relative top-[1px]' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-                        <span className="flex items-center gap-2"><Building size={14} /> {dong}</span>
-                    </button>
+                    <div key={dong} className="relative group">
+                        <button onDoubleClick={() => renameDong(dong)} onClick={() => setCurrentDong(dong)} className={`px-4 py-2 rounded-t-lg font-bold text-sm whitespace-nowrap transition pr-8 ${currentDong === dong ? 'bg-white border-x border-t border-gray-200 text-blue-600 relative top-[1px]' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                            <span className="flex items-center gap-2"><Building size={14} /> {dong}</span>
+                        </button>
+                        <div className={`absolute right-1 top-1/2 -translate-y-1/2 flex gap-1 ${currentDong === dong ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition`}>
+                            <button onClick={(e) => { e.stopPropagation(); deleteDong(dong); }} className="p-0.5 text-gray-400 hover:text-red-500 rounded"><Trash2 size={10} /></button>
+                        </div>
+                    </div>
                 ))}
+                <button onClick={addDong} className="px-3 py-2 text-gray-400 hover:text-blue-600 font-bold text-sm bg-gray-50 rounded hover:bg-blue-50 transition"><Plus size={16} /></button>
             </div>
         );
 
-        // --- App1에서 가져온 데이터를 원본 그대로 보여주는 컴포넌트 ---
-        const OriginalDataView = ({ currentDong, dongs, setCurrentDong, dongData, isNoDongMode }) => {
-            const data = dongData[currentDong];
-            
-            if (!data || !data.parsedItems || data.parsedItems.length === 0) {
-                return (
-                    <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300 text-gray-400">
-                        <p>현재 동({currentDong})에 대한 원본 견적 데이터가 없습니다.</p>
-                    </div>
-                );
-            }
+        // --- App 2: Original Data View (Grid) ---
+        const OriginalDataView = ({ currentDong, dongs, setCurrentDong, data, updateCurrentData, handlePaste, isNoDongMode, addDong, deleteDong, renameDong }) => {
+            const handleCellChange = (rIdx, cIdx, val) => { 
+                const newData = [...(data.gridData || [])]; 
+                newData[rIdx] = [...newData[rIdx]];
+                newData[rIdx][cIdx] = val; 
+                updateCurrentData({ gridData: newData }); 
+            };
+
+            const applyEstimate = () => {
+                if (!data.gridData || data.gridData.length === 0) {
+                    alert("적용할 엑셀 데이터가 없습니다."); return;
+                }
+                const items = parseItemsFromGrid(data.gridData, data.colMapping || {}, data.spec || '100*100', data.thickness || '2.1');
+                if (items.length === 0) { 
+                    alert("유효한 데이터가 없습니다. 길이와 수량 열이 올바르게 지정되었는지 확인하세요."); 
+                    return; 
+                }
+                updateCurrentData({ parsedItems: items });
+                alert(`총 ${items.length}개의 파트가 견적 데이터로 확정되었습니다.\n[CP 직접 편집] 탭의 견적 물량에 연동됩니다.`);
+            };
+
+            const resetGrid = () => {
+                if (confirm(`'${currentDong}'의 원본 견적 데이터를 초기화하시겠습니까?\n초기화 후 새로운 엑셀을 붙여넣을 수 있습니다.`)) {
+                    updateCurrentData({ rawInput: '', gridData: [], parsedItems: [] });
+                }
+            };
 
             return (
                 <div className="animate-fade-in pb-20 flex flex-col h-[calc(100vh-100px)]">
                     <div className="flex justify-between items-center mb-4 print:hidden">
-                        <h2 className="text-lg font-bold text-gray-800">원본 견적 데이터 조회 (App 1) {isNoDongMode ? '' : `(${currentDong})`}</h2>
-                        <span className="text-xs text-gray-500">※ 이 화면은 App 1에서 복사된 초기 입력 데이터입니다. 수정은 불가능합니다.</span>
+                        <h2 className="text-lg font-bold text-gray-800">원본 견적 관리 (App 2) {isNoDongMode ? '' : `(${currentDong})`}</h2>
+                        <div className="flex gap-2">
+                            <button onClick={applyEstimate} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:bg-indigo-700 transition flex items-center gap-2"><Save size={16} /> 견적 데이터 확정 (파싱)</button>
+                        </div>
                     </div>
-                    {!isNoDongMode && <DongTabs dongs={dongs} currentDong={currentDong} setCurrentDong={setCurrentDong} />}
+                    {!isNoDongMode && <DongTabs dongs={dongs} currentDong={currentDong} setCurrentDong={setCurrentDong} addDong={addDong} deleteDong={deleteDong} renameDong={renameDong} />}
                     
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex-1 overflow-hidden flex flex-col">
-                        <div className="p-3 border-b bg-gray-50 flex gap-4">
-                            <div className="text-sm">기본 규격: <b>{data.spec}</b></div>
-                            <div className="text-sm">두께: <b>{data.thickness}T</b></div>
-                            <div className="text-sm ml-auto">총 파트 수: <b>{data.parsedItems.length}</b></div>
+                        <div className="p-3 border-b bg-gray-50 flex justify-between items-center shrink-0">
+                            <div className="flex gap-2 items-center">
+                                <span className="text-sm font-bold text-gray-600">기본 규격:</span>
+                                <select value={data.spec || '100*100'} onChange={e => updateCurrentData({ spec: e.target.value })} className="p-1.5 border rounded text-sm bg-white font-bold text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option>100*100</option><option>75*75</option><option>100*50</option><option>50*50</option>
+                                </select>
+                                <select value={data.thickness || '2.1'} onChange={e => updateCurrentData({ thickness: e.target.value })} className="p-1.5 border rounded text-sm bg-white font-bold text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option>2.1</option><option>2.3</option><option>3.0</option><option>3.2</option>
+                                </select>
+                                <span className="text-xs text-gray-500 ml-4">적용된 파트 수: <b>{(data.parsedItems || []).length}</b> 개</span>
+                            </div>
+                            <button onClick={resetGrid} className="text-xs font-bold text-red-500 hover:text-red-700 hover:underline px-2 py-1">초기화 (새로 입력)</button>
                         </div>
-                        <div className="flex-1 overflow-auto custom-scrollbar p-4">
-                            <table className="w-full text-sm text-center border-collapse">
-                                <thead className="sticky top-0 bg-gray-100 shadow-sm">
-                                    <tr className="border-b">
-                                        <th className="p-2 border">#</th>
-                                        <th className="p-2 border">규격 (T/W/H)</th>
-                                        <th className="p-2 border">길이(mm)</th>
-                                        <th className="p-2 border">수량(개)</th>
-                                        <th className="p-2 border">마킹</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {data.parsedItems.map((item, i) => (
-                                        <tr key={i} className="border-b hover:bg-blue-50">
-                                            <td className="p-2 border text-gray-500">{i + 1}</td>
-                                            <td className="p-2 border">{item.t} / {item.w} / {item.h}</td>
-                                            <td className="p-2 border font-bold text-blue-700">{item.length}</td>
-                                            <td className="p-2 border font-bold">{item.qty}</td>
-                                            <td className="p-2 border text-left px-4">{item.marking}</td>
+                        
+                        <div className="flex-1 overflow-auto custom-scrollbar relative bg-white">
+                            {(!data.gridData || data.gridData.length === 0) ? (
+                                <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+                                    <textarea className="absolute inset-0 opacity-0 cursor-text" onPaste={handlePaste} autoFocus />
+                                    <div className="text-center text-gray-400 pointer-events-none">
+                                        <div className="bg-indigo-100 text-indigo-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"><FileSpreadsheet size={32}/></div>
+                                        <p className="text-2xl font-bold mb-2">Ctrl + V</p>
+                                        <p className="text-sm">엑셀 표를 복사하여 이곳에 붙여넣으세요</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <table className="w-full text-xs border-collapse">
+                                    <thead className="sticky top-0 bg-white shadow-sm z-10">
+                                        <tr>
+                                            <th className="p-1 border bg-gray-100 w-8 text-center text-gray-500">#</th>
+                                            {(data.gridData[0] || []).map((_, cIdx) => (
+                                                <th key={cIdx} className="p-1 border min-w-[80px]">
+                                                    <select className={`w-full p-1 border rounded text-xs font-bold outline-none cursor-pointer ${['length', 'qty'].includes(data.colMapping?.[cIdx]) ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : ['width', 'height', 'thickness'].includes(data.colMapping?.[cIdx]) ? 'bg-green-100 text-green-700 border-green-200' : 'bg-white text-gray-400'}`} 
+                                                        value={data.colMapping?.[cIdx] || ''} 
+                                                        onChange={e => updateCurrentData({ colMapping: { ...(data.colMapping || {}), [cIdx]: e.target.value } })}>
+                                                        <option value="">- 열 무시 -</option>
+                                                        <option value="width">가로</option>
+                                                        <option value="height">세로</option>
+                                                        <option value="thickness">두께</option>
+                                                        <option value="length">📏 길이(필수)</option>
+                                                        <option value="qty">🔢 수량(필수)</option>
+                                                        <option value="marking">🏷️ 마킹</option>
+                                                    </select>
+                                                </th>
+                                            ))}
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="bg-white">
+                                        {data.gridData.map((row, rIdx) => (
+                                            <tr key={rIdx} className="hover:bg-indigo-50 transition-colors">
+                                                <td className="p-1 border text-center text-gray-400 bg-gray-50">{rIdx + 1}</td>
+                                                {row.map((cell, cIdx) => (
+                                                    <td key={cIdx} className="border p-0 relative">
+                                                        <input className="w-full h-full p-2 text-xs border-none focus:ring-2 focus:ring-indigo-500 focus:z-10 outline-none bg-transparent" 
+                                                            value={cell} 
+                                                            onChange={(e) => handleCellChange(rIdx, cIdx, e.target.value)} 
+                                                        />
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -313,72 +341,134 @@
         };
 
         // --- Manual / Editor View (With Excel-like keyboard & select features) ---
-        const ManualCPView = ({ currentDong, dongs, setCurrentDong, manualData, setManualData, projectInfo, onConvert, isNoDongMode, dongData }) => {
+        const ManualCPView = ({ currentDong, dongs, setCurrentDong, addDong, deleteDong, renameDong, manualData, setManualData, projectInfo, onConvert, isNoDongMode, dongData }) => {
             const rows = manualData[currentDong] || [];
             const [hideEmpty, setHideEmpty] = useState(false);
             
-            // --- 다중 셀 선택 및 합산 기능 (우측 패널) ---
+            // --- 다중 셀 선택 및 합산 기능 (드래그 지원 & 길이 합산) ---
             const [selectedCells, setSelectedCells] = useState(new Map());
+            const [isDragging, setIsDragging] = useState(false);
+
+            useEffect(() => {
+                const stopDrag = () => setIsDragging(false);
+                window.addEventListener('mouseup', stopDrag);
+                return () => window.removeEventListener('mouseup', stopDrag);
+            }, []);
             
-            const handleCellClick = (e, id, value) => {
-                const val = parseFloat(value) || 0;
+            const handleMouseDown = (e, id, lengthSum) => {
+                setIsDragging(true);
                 if (e.ctrlKey || e.metaKey) {
                     const newMap = new Map(selectedCells);
                     if (newMap.has(id)) newMap.delete(id);
-                    else newMap.set(id, val);
+                    else newMap.set(id, lengthSum);
                     setSelectedCells(newMap);
                 } else {
-                    setSelectedCells(new Map([[id, val]]));
+                    setSelectedCells(new Map([[id, lengthSum]]));
+                }
+            };
+
+            const handleMouseEnter = (id, lengthSum) => {
+                if (isDragging) {
+                    const newMap = new Map(selectedCells);
+                    newMap.set(id, lengthSum);
+                    setSelectedCells(newMap);
                 }
             };
 
             const selectedSum = Array.from(selectedCells.values()).reduce((a, b) => a + b, 0);
 
-            // --- 키보드 기하학적 이동 (상하좌우) 기능 ---
+            // --- 키보드 기하학적 및 논리적 이동 기능 ---
             const handleKeyDown = (e) => {
                 if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
                 
-                const inputs = Array.from(document.querySelectorAll('input.input-cell:not([disabled])'));
-                const currentIndex = inputs.indexOf(e.target);
-                if (currentIndex === -1) return;
+                const target = e.target;
+                if (!target.classList.contains('input-cell')) return;
 
-                if (e.key === 'ArrowLeft') { e.preventDefault(); if (inputs[currentIndex - 1]) inputs[currentIndex - 1].focus(); return; }
-                if (e.key === 'ArrowRight') { e.preventDefault(); if (inputs[currentIndex + 1]) inputs[currentIndex + 1].focus(); return; }
-
-                const rect = e.target.getBoundingClientRect();
-                let nextInput = null;
-                let minDistance = Infinity;
-
-                inputs.forEach((input, i) => {
-                    if (i === currentIndex) return;
-                    const r = input.getBoundingClientRect();
-                    if (Math.abs(r.left - rect.left) < 30) {
-                        if (e.key === 'ArrowDown' && r.top >= rect.bottom - 5) {
-                            const dist = r.top - rect.bottom;
-                            if (dist < minDistance) { minDistance = dist; nextInput = input; }
-                        }
-                        if (e.key === 'ArrowUp' && r.bottom <= rect.top + 5) {
-                            const dist = rect.top - r.bottom;
-                            if (dist < minDistance) { minDistance = dist; nextInput = input; }
-                        }
-                    }
-                });
-
-                if (nextInput) {
+                // 숫자 증감 등 브라우저 기본 동작 완벽 차단
+                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
                     e.preventDefault();
-                    nextInput.focus();
-                    nextInput.select();
+                }
+
+                const rIdx = parseInt(target.dataset.ridx);
+                const cIdx = parseInt(target.dataset.cidx || 0);
+                const colName = target.dataset.col;
+
+                let nextFocus = null;
+
+                if (e.key === 'ArrowLeft') {
+                    if (colName === 'cut_l') {
+                        // 컷팅 길이에서 왼쪽 화살표: 해당 행의 수량(qty) 셀로 이동
+                        nextFocus = document.querySelector(`input[data-ridx="${rIdx}"][data-col="qty"]`);
+                    } else if (colName === 'remark') {
+                        // 비고에서 왼쪽 화살표: 첫번째 컷팅의 마킹(cut_marking) 셀로 이동
+                        nextFocus = document.querySelector(`input[data-ridx="${rIdx}"][data-cidx="0"][data-col="cut_marking"]`);
+                    } else {
+                        // 기본 기하학적 왼쪽 이동
+                        const inputs = Array.from(document.querySelectorAll('input.input-cell:not([disabled])'));
+                        const currentIndex = inputs.indexOf(target);
+                        if (currentIndex > 0) nextFocus = inputs[currentIndex - 1];
+                    }
+                } else if (e.key === 'ArrowRight') {
+                    if (colName === 'qty') {
+                        // 수량(qty)에서 오른쪽 화살표: 첫번째 컷팅 길이(cut_l) 셀로 이동
+                        nextFocus = document.querySelector(`input[data-ridx="${rIdx}"][data-cidx="0"][data-col="cut_l"]`);
+                    } else if (colName === 'cut_marking') {
+                        // 컷팅 마킹에서 오른쪽 화살표: 비고(remark) 셀로 이동
+                        nextFocus = document.querySelector(`input[data-ridx="${rIdx}"][data-col="remark"]`);
+                    } else {
+                        // 기본 기하학적 오른쪽 이동
+                        const inputs = Array.from(document.querySelectorAll('input.input-cell:not([disabled])'));
+                        const currentIndex = inputs.indexOf(target);
+                        if (currentIndex !== -1 && currentIndex < inputs.length - 1) nextFocus = inputs[currentIndex + 1];
+                    }
+                } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    // 상하는 기존의 getBoundingClientRect 로직 사용
+                    const rect = target.getBoundingClientRect();
+                    const inputs = Array.from(document.querySelectorAll('input.input-cell:not([disabled])'));
+                    let minDistance = Infinity;
+
+                    inputs.forEach((input) => {
+                        if (input === target) return;
+                        const r = input.getBoundingClientRect();
+                        // 동일 수직 선상에 있는지 체크 (오차 30px 이내)
+                        if (Math.abs(r.left - rect.left) < 30) {
+                            if (e.key === 'ArrowDown' && r.top >= rect.bottom - 5) {
+                                const dist = r.top - rect.bottom;
+                                if (dist < minDistance) { minDistance = dist; nextFocus = input; }
+                            }
+                            if (e.key === 'ArrowUp' && r.bottom <= rect.top + 5) {
+                                const dist = rect.top - r.bottom;
+                                if (dist < minDistance) { minDistance = dist; nextFocus = input; }
+                            }
+                        }
+                    });
+                }
+
+                if (nextFocus) {
+                    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') e.preventDefault();
+                    nextFocus.focus();
+                    nextFocus.select();
                 }
             };
 
             const updateRows = (newRows) => { setManualData(prev => ({ ...prev, [currentDong]: newRows })); };
-            const addStockRow = () => { const lastRow = rows.length > 0 ? rows[rows.length - 1] : { t: '2.1', w: '100', h: '100', l: 6000, qty: 1 }; const newRow = { id: Date.now(), t: lastRow.t, w: lastRow.w, h: lastRow.h, l: lastRow.l, qty: 1, cuts: Array(8).fill().map(() => ({ l: '', count: '', marking: '' })) }; updateRows([...rows, newRow]); };
+            
+            // 수동 편집창 초기화 로직 (두 번 확인)
+            const handleReset = () => {
+                if (confirm(`'${currentDong}'의 수동 편집 데이터를 초기화하시겠습니까?`)) {
+                    if (confirm("정말 모든 내용이 삭제됩니다. 계속하시겠습니까?")) {
+                        updateRows([]);
+                    }
+                }
+            };
+
+            const addStockRow = () => { const lastRow = rows.length > 0 ? rows[rows.length - 1] : { t: '2.1', w: '100', h: '100', l: 6000, qty: 1 }; const newRow = { id: Date.now(), t: lastRow.t, w: lastRow.w, h: lastRow.h, l: lastRow.l, qty: 1, remark: '', cuts: Array(8).fill().map(() => ({ l: '', count: '', marking: '', isYellow: false })) }; updateRows([...rows, newRow]); };
             const handleStockChange = (rIdx, field, val) => { const newRows = [...rows]; newRows[rIdx] = { ...newRows[rIdx], [field]: val }; updateRows(newRows); };
             const handleCutChange = (rIdx, cIdx, field, val) => { const newRows = [...rows]; const newCuts = [...newRows[rIdx].cuts]; newCuts[cIdx] = { ...newCuts[cIdx], [field]: val }; newRows[rIdx] = { ...newRows[rIdx], cuts: newCuts }; updateRows(newRows); };
             const removeStockRow = (rIdx) => { if (confirm('이 원본 행을 삭제하시겠습니까?')) { const newRows = rows.filter((_, i) => i !== rIdx); updateRows(newRows); } };
             const sortRowsByLength = () => { const newRows = [...rows].sort((a, b) => { if (a.t !== b.t) return parseFloat(b.t) - parseFloat(a.t); if (a.w !== b.w) return parseFloat(b.w) - parseFloat(a.w); if (a.h !== b.h) return parseFloat(b.h) - parseFloat(a.h); return b.l - a.l; }); updateRows(newRows); };
             
-            // App1에서 넘어온 견적서 원본 데이터(dongData)를 파싱
+            // 견적서 원본 데이터(dongData) 파싱
             const parsedItems = dongData[currentDong]?.parsedItems || [];
             
             // 필요 물량 (원본)
@@ -386,7 +476,6 @@
                 const grouped = {}; 
                 (parsedItems || []).forEach(item => { 
                     const itemMarking = item.marking ? String(item.marking).trim() : ''; 
-                    // 두께, 넓이, 높이, 길이, 마킹이 같으면 같은 항목으로 묶음
                     const key = `${item.t}|${item.w}|${item.h}|${item.length}|${itemMarking}`; 
                     if (!grouped[key]) grouped[key] = { ...item, marking: itemMarking, required: 0, used: 0 }; 
                     grouped[key].required += item.qty; 
@@ -394,9 +483,11 @@
                 return Object.values(grouped).sort((a, b) => b.length - a.length); 
             }, [parsedItems]);
 
-            // 남은 물량 (실시간 연동)
+            // 남은 물량 (실시간 연동 및 견적 외 자재 표시)
             const remainingItems = useMemo(() => { 
                 const status = JSON.parse(JSON.stringify(requiredItems)); 
+                const unmatched = {};
+
                 (rows || []).forEach(row => { 
                     if (Array.isArray(row.cuts)) { 
                         row.cuts.forEach(cut => { 
@@ -405,7 +496,6 @@
                                 const totalCutCount = parseInt(cut.count) * parseInt(row.qty || 0); 
                                 const cutMarking = cut.marking ? String(cut.marking).trim() : ''; 
                                 
-                                // 현재 입력한 값과 견적서의 값이 정확히 일치하는지 확인 (두께, 넓이, 높이, 길이, 마킹)
                                 const match = status.find(item => 
                                     Math.abs(item.length - cutLen) < 0.1 && 
                                     (item.marking || '') === cutMarking && 
@@ -415,16 +505,38 @@
                                 ); 
                                 if (match) { 
                                     match.used += totalCutCount; 
-                                } 
+                                } else {
+                                    // 원본 견적에 없는 길이/마킹 조합 발견 시 별도 저장
+                                    const key = `${row.t}|${row.w}|${row.h}|${cutLen}|${cutMarking}`;
+                                    if (!unmatched[key]) {
+                                        unmatched[key] = { t: row.t, w: row.w, h: row.h, length: cutLen, marking: cutMarking, required: 0, used: 0, isUnmatched: true };
+                                    }
+                                    unmatched[key].used += totalCutCount;
+                                }
                             } 
                         }); 
                     } 
                 }); 
-                return status; 
+                // 기존 데이터 뒤에 견적 외 추가된 항목들을 이어 붙임
+                return [...status, ...Object.values(unmatched)]; 
             }, [requiredItems, rows]);
 
-            // Clear selected cells if tab changes to avoid mismatched keys
+            // Clear selected cells if tab changes
             useEffect(() => { setSelectedCells(new Map()); }, [currentDong]);
+
+            // 중량 계산용 변수
+            const totalRequiredWeight = requiredItems.reduce((sum, item) => {
+                const unitWeight = getUnitWeight(item.w, item.h, item.t);
+                return sum + ((item.length / 1000) * item.required * unitWeight);
+            }, 0);
+
+            const totalUsedWeight = remainingItems.reduce((sum, item) => {
+                const unitWeight = getUnitWeight(item.w, item.h, item.t);
+                return sum + ((item.length / 1000) * item.used * unitWeight);
+            }, 0);
+            
+            const totalRequiredQty = requiredItems.reduce((sum, item) => sum + (item.required || 0), 0);
+            const totalUsedQty = remainingItems.reduce((sum, item) => sum + (item.used || 0), 0);
 
             return (
                 <div className="animate-fade-in pb-20 flex gap-4 h-[calc(100vh-100px)] relative">
@@ -432,77 +544,115 @@
                         <div className="p-3 border-b bg-gray-50 flex justify-between items-center shrink-0">
                             <h2 className="font-bold flex items-center gap-2 text-indigo-700"><Edit3 size={18} className="text-indigo-600" /> CP 직접 편집 (App 2) {isNoDongMode ? '' : `(${currentDong})`}</h2>
                             <div className="flex gap-2">
-                                <span className="text-xs text-gray-500 mr-2 self-center">💡 셀에서 방향키(↑↓←→) 이동 지원</span>
+                                <button onClick={handleReset} className="px-3 py-1.5 text-xs font-bold rounded flex items-center gap-1 border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition"><RotateCcw size={14} /> 현재 동 초기화</button>
+                                <span className="w-px h-6 bg-gray-300 mx-1"></span>
                                 <button onClick={() => setHideEmpty(!hideEmpty)} className={`px-3 py-1.5 text-xs font-bold rounded flex items-center gap-1 border ${hideEmpty ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-white text-gray-500 border-gray-300'}`}>{hideEmpty ? <EyeOff size={14} /> : <Eye size={14} />} 빈칸 {hideEmpty ? '보이기' : '숨기기'}</button>
                                 <button onClick={sortRowsByLength} className="px-3 py-1.5 text-xs font-bold rounded bg-white border border-gray-300 text-gray-600 hover:bg-gray-50">길이순 정렬</button>
-                                <button onClick={() => onConvert(rows)} className="px-3 py-1.5 text-xs font-bold rounded bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1"><Check size={14} /> [수동 결과]로 등록 및 엑셀 저장</button>
+                                <button onClick={() => onConvert(rows)} className="px-3 py-1.5 text-xs font-bold rounded bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1"><Check size={14} /> [수동 결과]로 등록 및 저장대기</button>
                             </div>
                         </div>
                         <div className="flex-1 overflow-auto custom-scrollbar bg-white p-4" onKeyDown={handleKeyDown}>
-                            {!isNoDongMode && <DongTabs dongs={dongs} currentDong={currentDong} setCurrentDong={setCurrentDong} />}
-                            <table className="w-full border-collapse text-xs text-center shadow-sm">
-                                <thead className="sticky top-0 z-10">
-                                    <tr className="bg-indigo-50 h-8 border-y border-gray-300 text-gray-700 font-bold">
-                                        <th className="border w-10">순번</th>
-                                        <th className="border w-12">두께</th>
-                                        <th className="border w-12">장변</th>
-                                        <th className="border w-12">단변</th>
-                                        <th className="border w-16">길이</th>
-                                        <th className="border w-12">수량</th>
-                                        <th className="border w-16 bg-white border-2 border-indigo-100 text-indigo-700">길이</th>
-                                        <th className="border w-12 bg-white border-2 border-indigo-100 text-indigo-700">컷팅수</th>
-                                        <th className="border w-12 bg-white border-2 border-indigo-100 text-indigo-700">수량</th>
-                                        <th className="border bg-white border-2 border-indigo-100 text-indigo-700">마킹</th>
-                                        <th className="border w-16">본당LOSS</th>
-                                        <th className="border w-20">총LOSS</th>
-                                        <th className="border w-12">비고</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {(rows || []).map((row, rIdx) => {
-                                        const cuts = Array.isArray(row.cuts) ? row.cuts : [];
-                                        const visibleCuts = hideEmpty ? cuts.filter(c => c.l && c.count) : cuts;
-                                        const renderCuts = visibleCuts.length > 0 ? visibleCuts : (hideEmpty ? [] : cuts);
-                                        const rowSpan = Math.max(1, renderCuts.length);
-                                        const usedLength = cuts.reduce((acc, c) => acc + (parseFloat(c.l || 0) * parseFloat(c.count || 0)), 0);
-                                        const lossPerBar = row.l - usedLength;
-                                        const totalRowLoss = lossPerBar * row.qty;
-                                        
-                                        // App 1과 동일한 하이라이트 조건
-                                        const maxPartLength = Math.max(...cuts.map(p => parseFloat(p.l || 0)));
-                                        const isHighlightCondition = lossPerBar <= 270 && maxPartLength >= 1000 && maxPartLength <= 2700;
+                            {!isNoDongMode && <DongTabs dongs={dongs} currentDong={currentDong} setCurrentDong={setCurrentDong} addDong={addDong} deleteDong={deleteDong} renameDong={renameDong} />}
+                            
+                            {rows.length === 0 ? (
+                                <div className="text-center py-20 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                                    <p className="text-lg font-bold mb-2">작성된 CP 데이터가 없습니다.</p>
+                                    <p className="text-sm">아래 <b>'+ 수동 원본 추가'</b>를 눌러 처음부터 작성하거나,</p>
+                                    <p className="text-sm"><b>[최종 보고서]</b> 탭에서 기존 결과(App 1)를 복사해 올 수 있습니다.</p>
+                                </div>
+                            ) : (
+                                <table className="w-full border-collapse text-xs text-center shadow-sm">
+                                    <thead className="sticky top-0 z-10">
+                                        <tr className="bg-indigo-50 h-8 border-y border-gray-300 text-gray-700 font-bold">
+                                            <th className="border w-10">순번</th>
+                                            <th className="border w-12">두께</th>
+                                            <th className="border w-12">장변</th>
+                                            <th className="border w-12">단변</th>
+                                            <th className="border w-16">길이</th>
+                                            <th className="border w-12">수량</th>
+                                            <th className="border w-24 bg-white border-2 border-indigo-100 text-indigo-700">길이</th>
+                                            <th className="border w-12 bg-white border-2 border-indigo-100 text-indigo-700">컷팅수</th>
+                                            <th className="border w-12 bg-white border-2 border-indigo-100 text-indigo-700">수량</th>
+                                            <th className="border w-48 bg-white border-2 border-indigo-100 text-indigo-700">마킹</th>
+                                            <th className="border w-16">본당LOSS</th>
+                                            <th className="border w-20">총LOSS</th>
+                                            <th className="border w-16">비고</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {(rows || []).map((row, rIdx) => {
+                                            const cuts = Array.isArray(row.cuts) ? row.cuts : [];
+                                            const visibleCuts = hideEmpty ? cuts.filter(c => c.l && c.count) : cuts;
+                                            const renderCuts = visibleCuts.length > 0 ? visibleCuts : (hideEmpty ? [] : cuts);
+                                            const rowSpan = Math.max(1, renderCuts.length);
+                                            const usedLength = cuts.reduce((acc, c) => acc + (parseFloat(c.l || 0) * parseFloat(c.count || 0)), 0);
+                                            const lossPerBar = row.l - usedLength;
+                                            const totalRowLoss = lossPerBar * row.qty;
+                                            
+                                            const validCutLengths = cuts.filter(p => p.l).map(p => parseFloat(p.l));
+                                            const maxPartLength = validCutLengths.length > 0 ? Math.max(...validCutLengths) : 0;
+                                            // 하이라이트 규칙 변경: 잔재 270 이하 & (잔재 + 제일 긴 자재 길이)가 1000~2700
+                                            const isHighlightCondition = lossPerBar <= 270 && (lossPerBar + maxPartLength) >= 1000 && (lossPerBar + maxPartLength) <= 2700;
 
-                                        return (
-                                            <React.Fragment key={row.id || rIdx}>
-                                                {renderCuts.map((cut, cIdx) => {
-                                                    const isFirst = cIdx === 0;
-                                                    const cutQty = (parseInt(cut.count) * parseInt(row.qty)) || '';
-                                                    return (
-                                                        <tr key={cIdx} className="border-b border-gray-200 hover:bg-gray-50 h-8">
-                                                            {isFirst && (<><td rowSpan={rowSpan} className={`border font-bold relative group ${isHighlightCondition ? 'bg-purple-200 text-purple-900 border-purple-400' : 'bg-yellow-50'}`}>{rIdx + 1}<button onClick={() => removeStockRow(rIdx)} className="absolute left-0 top-0 text-red-400 opacity-0 group-hover:opacity-100 p-0.5"><Trash2 size={10} /></button></td><td rowSpan={rowSpan} className="border bg-yellow-50 p-0"><input className="input-cell bg-yellow-50" value={row.t} onChange={e => handleStockChange(rIdx, 't', e.target.value)} /></td><td rowSpan={rowSpan} className="border bg-yellow-50 p-0"><input className="input-cell bg-yellow-50" value={row.w} onChange={e => handleStockChange(rIdx, 'w', e.target.value)} /></td><td rowSpan={rowSpan} className="border bg-yellow-50 p-0"><input className="input-cell bg-yellow-50" value={row.h} onChange={e => handleStockChange(rIdx, 'h', e.target.value)} /></td><td rowSpan={rowSpan} className="border bg-yellow-50 p-0"><input type="number" className="input-cell bg-yellow-50 font-bold" value={row.l} onChange={e => handleStockChange(rIdx, 'l', e.target.value)} /></td><td rowSpan={rowSpan} className="border bg-yellow-50 p-0"><input type="number" className="input-cell bg-yellow-50" value={row.qty} onChange={e => handleStockChange(rIdx, 'qty', e.target.value)} /></td></>)}
-                                                            <td className="border p-0"><input type="number" className="input-cell" value={cut.l} onChange={e => handleCutChange(rIdx, cuts.indexOf(cut), 'l', e.target.value)} /></td><td className="border p-0"><input type="number" className="input-cell" value={cut.count} onChange={e => handleCutChange(rIdx, cuts.indexOf(cut), 'count', e.target.value)} /></td><td className="border bg-gray-50 text-gray-500">{cutQty ? cutQty.toLocaleString() : ''}</td><td className="border p-0"><input className="input-cell text-left px-1" value={cut.marking} onChange={e => handleCutChange(rIdx, cuts.indexOf(cut), 'marking', e.target.value)} /></td>
-                                                            {isFirst && (<><td rowSpan={rowSpan} className={`border font-bold ${lossPerBar >= 400 ? 'text-red-600 bg-[#FFCCBC]' : (lossPerBar < 100 ? 'text-red-500' : 'text-gray-700')}`}>{lossPerBar.toLocaleString()}</td><td rowSpan={rowSpan} className="border text-gray-600">{totalRowLoss.toLocaleString()}</td><td rowSpan={rowSpan} className="border"></td></>)}
-                                                        </tr>
-                                                    );
-                                                })}
-                                                <tr className="h-1 bg-gray-100 border-t border-gray-300"><td colSpan="13"></td></tr>
-                                            </React.Fragment>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
+                                            return (
+                                                <React.Fragment key={row.id || rIdx}>
+                                                    {renderCuts.map((cut, cIdx) => {
+                                                        const isFirst = cIdx === 0;
+                                                        const cutQty = (parseInt(cut.count) * parseInt(row.qty)) || '';
+                                                        return (
+                                                            <tr key={cIdx} className="border-b border-gray-200 hover:bg-gray-50 h-8">
+                                                                {isFirst && (<>
+                                                                    <td rowSpan={rowSpan} className={`border font-bold relative group ${isHighlightCondition ? 'bg-purple-200 text-purple-900 border-purple-400' : 'bg-yellow-50'}`}>{rIdx + 1}<button onClick={() => removeStockRow(rIdx)} className="absolute left-0 top-0 text-red-400 opacity-0 group-hover:opacity-100 p-0.5"><Trash2 size={10} /></button></td>
+                                                                    <td rowSpan={rowSpan} className="border bg-yellow-50 p-0"><input className="input-cell bg-yellow-50" value={row.t} onChange={e => handleStockChange(rIdx, 't', e.target.value)} data-ridx={rIdx} data-col="t" /></td>
+                                                                    <td rowSpan={rowSpan} className="border bg-yellow-50 p-0"><input className="input-cell bg-yellow-50" value={row.w} onChange={e => handleStockChange(rIdx, 'w', e.target.value)} data-ridx={rIdx} data-col="w" /></td>
+                                                                    <td rowSpan={rowSpan} className="border bg-yellow-50 p-0"><input className="input-cell bg-yellow-50" value={row.h} onChange={e => handleStockChange(rIdx, 'h', e.target.value)} data-ridx={rIdx} data-col="h" /></td>
+                                                                    <td rowSpan={rowSpan} className="border bg-yellow-50 p-0"><input type="number" className="input-cell bg-yellow-50 font-bold" value={row.l} onChange={e => handleStockChange(rIdx, 'l', e.target.value)} data-ridx={rIdx} data-col="l" /></td>
+                                                                    <td rowSpan={rowSpan} className="border bg-yellow-50 p-0"><input type="number" className="input-cell bg-yellow-50" value={row.qty} onChange={e => handleStockChange(rIdx, 'qty', e.target.value)} data-ridx={rIdx} data-col="qty" /></td>
+                                                                </>)}
+                                                                <td className={`border p-0 ${cut.isYellow ? 'bg-yellow-100' : ''}`}><input type="number" className="input-cell" value={cut.l} onChange={e => handleCutChange(rIdx, cuts.indexOf(cut), 'l', e.target.value)} data-ridx={rIdx} data-cidx={cIdx} data-col="cut_l" /></td>
+                                                                <td className={`border p-0 ${cut.isYellow ? 'bg-yellow-100' : ''}`}><input type="number" className="input-cell" value={cut.count} onChange={e => handleCutChange(rIdx, cuts.indexOf(cut), 'count', e.target.value)} data-ridx={rIdx} data-cidx={cIdx} data-col="cut_count" /></td>
+                                                                <td className={`border text-gray-500 ${cut.isYellow ? 'bg-yellow-100' : 'bg-gray-50'}`}>{cutQty ? cutQty.toLocaleString() : ''}</td>
+                                                                <td className={`border p-0 ${cut.isYellow ? 'bg-yellow-100' : ''}`}>
+                                                                    <div className="flex items-center h-full w-full">
+                                                                        <input type="text" className="input-cell text-left px-1 flex-1" value={cut.marking} onChange={e => handleCutChange(rIdx, cuts.indexOf(cut), 'marking', e.target.value)} data-ridx={rIdx} data-cidx={cIdx} data-col="cut_marking" />
+                                                                        <label className="flex items-center gap-1 pr-1 text-[10px] text-gray-400 cursor-pointer whitespace-nowrap select-none hover:text-gray-600">
+                                                                            <input type="checkbox" checked={cut.isYellow || false} onChange={e => handleCutChange(rIdx, cuts.indexOf(cut), 'isYellow', e.target.checked)} />
+                                                                            배경
+                                                                        </label>
+                                                                    </div>
+                                                                </td>
+                                                                {isFirst && (<>
+                                                                    <td rowSpan={rowSpan} className={`border font-bold ${lossPerBar >= 400 ? 'text-red-600 bg-[#FFCCBC]' : (lossPerBar < 100 ? 'text-red-500' : 'text-gray-700')}`}>{lossPerBar.toLocaleString()}</td>
+                                                                    <td rowSpan={rowSpan} className="border text-gray-600">{totalRowLoss.toLocaleString()}</td>
+                                                                    <td rowSpan={rowSpan} className="border p-0"><input className="input-cell text-left px-1" value={row.remark || ''} onChange={e => handleStockChange(rIdx, 'remark', e.target.value)} placeholder="비고 입력" data-ridx={rIdx} data-col="remark" /></td>
+                                                                </>)}
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                    <tr className="h-1 bg-gray-100 border-t border-gray-300"><td colSpan="13"></td></tr>
+                                                </React.Fragment>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            )}
                             <button onClick={addStockRow} className="w-full mt-4 py-3 border-2 border-dashed border-indigo-300 rounded-lg text-indigo-400 hover:border-indigo-500 hover:text-indigo-600 font-bold transition">+ 수동 원본 추가</button>
                         </div>
                     </div>
                     
                     {/* 우측 패널 (다중 셀 선택 가능 및 견적 연동) */}
-                    <div className="w-80 flex flex-col gap-4 relative">
-                        <div className="text-xs text-right text-gray-500 pb-1">💡 <b>Ctrl + 클릭</b>으로 다중 수량 선택 및 합산</div>
+                    <div className="w-80 flex flex-col gap-4 relative select-none">
+                        <div className="text-xs text-right text-gray-500 pb-1">💡 <b>드래그</b> 또는 <b>Ctrl+클릭</b>으로 다중 길이 합산</div>
+                        
+                        {/* 견적 물량 테이블 */}
                         <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-                            <div className="p-2 bg-gray-800 text-white font-bold text-sm text-center">견적 물량 (App 1 원본)</div>
-                            <div className="flex-1 overflow-auto custom-scrollbar p-2">
+                            <div className="p-2 bg-gray-800 text-white font-bold text-sm text-center flex justify-between items-center px-4">
+                                <span>견적 물량 (원본)</span>
+                                <span className="text-xs font-normal text-gray-300">총 {totalRequiredWeight.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3})}kg</span>
+                            </div>
+                            <div className="flex-1 overflow-auto custom-scrollbar p-0 relative">
                                 <table className="w-full text-xs text-center border-collapse">
-                                    <thead className="sticky top-0 bg-white shadow-sm"><tr className="bg-gray-100 border-b"><th className="p-1">규격(T/W/H)</th><th className="p-1">길이</th><th className="p-1">수량</th><th className="p-1">마킹</th></tr></thead>
+                                    <thead className="sticky top-0 bg-white shadow-sm z-10"><tr className="bg-gray-100 border-b"><th className="p-1">규격(T/W/H)</th><th className="p-1">길이</th><th className="p-1">수량</th><th className="p-1">마킹</th></tr></thead>
                                     <tbody>
                                         {requiredItems.length === 0 && (
                                             <tr><td colSpan="4" className="py-4 text-gray-400">데이터 없음</td></tr>
@@ -510,54 +660,98 @@
                                         {requiredItems.map((item, i) => {
                                             const id = `req-${i}`;
                                             const isSelected = selectedCells.has(id);
+                                            // 총 길이 -> 1본 기준 길이 (수량 무시)
+                                            const lengthSum = item.length;
                                             return (
-                                                <tr key={i} className={`border-b hover:bg-gray-50 ${isSelected ? 'bg-blue-100' : ''}`} onClick={(e) => handleCellClick(e, id, item.required)}>
-                                                    <td className="p-1 cursor-default">{item.t}/{item.w}/{item.h}</td>
-                                                    <td className="p-1 font-bold cursor-default">{item.length}</td>
-                                                    <td className={`p-1 cursor-pointer font-bold ${isSelected ? 'text-blue-700' : ''}`}>{item.required}</td>
-                                                    <td className="p-1 text-left truncate max-w-[80px] cursor-default" title={item.marking}>{item.marking}</td>
+                                                <tr key={i} 
+                                                    className={`border-b cursor-pointer ${isSelected ? 'bg-blue-100' : 'hover:bg-gray-50'}`} 
+                                                    onMouseDown={(e) => handleMouseDown(e, id, lengthSum)}
+                                                    onMouseEnter={() => handleMouseEnter(id, lengthSum)}
+                                                >
+                                                    <td className="p-1">{item.t}/{item.w}/{item.h}</td>
+                                                    <td className="p-1 font-bold">{item.length}</td>
+                                                    <td className={`p-1 font-bold ${isSelected ? 'text-blue-700' : ''}`}>{item.required}</td>
+                                                    <td className="p-1 text-left truncate max-w-[80px]" title={item.marking}>{item.marking}</td>
                                                 </tr>
                                             )
                                         })}
                                     </tbody>
+                                    {requiredItems.length > 0 && (
+                                        <tfoot className="bg-gray-200 font-bold sticky bottom-0 shadow-[0_-2px_4px_rgba(0,0,0,0.05)] border-t border-gray-300 z-10">
+                                            <tr>
+                                                <td colSpan="2" className="p-2 text-center text-gray-700">총계</td>
+                                                <td className="p-2 text-blue-700 text-base">{totalRequiredQty.toLocaleString()}</td>
+                                                <td className="p-2 text-gray-800 text-right pr-3">{totalRequiredWeight.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3})} kg</td>
+                                            </tr>
+                                        </tfoot>
+                                    )}
                                 </table>
                             </div>
                         </div>
+
+                        {/* 남은 물량 (사용량) 테이블 */}
                         <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-                            <div className="p-2 bg-indigo-600 text-white font-bold text-sm text-center">남은 물량 (실시간)</div>
-                            <div className="flex-1 overflow-auto custom-scrollbar p-2">
+                            <div className="p-2 bg-indigo-600 text-white font-bold text-sm text-center flex justify-between items-center px-4">
+                                <span>사용된 물량</span>
+                                <span className="text-xs font-normal text-indigo-200">총 {totalUsedWeight.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3})}kg</span>
+                            </div>
+                            <div className="flex-1 overflow-auto custom-scrollbar p-0 relative">
                                 <table className="w-full text-xs text-center border-collapse">
-                                    <thead className="sticky top-0 bg-white shadow-sm"><tr className="bg-indigo-50 border-b border-indigo-200"><th className="p-1">규격</th><th className="p-1">길이</th><th className="p-1">잔여</th><th className="p-1">마킹</th></tr></thead>
+                                    <thead className="sticky top-0 bg-white shadow-sm z-10"><tr className="bg-indigo-50 border-b border-indigo-200"><th className="p-1">규격</th><th className="p-1">길이</th><th className="p-1">잔여</th><th className="p-1">마킹</th></tr></thead>
                                     <tbody>
                                         {remainingItems.length === 0 && (
                                             <tr><td colSpan="4" className="py-4 text-gray-400">데이터 없음</td></tr>
                                         )}
                                         {remainingItems.map((item, i) => { 
-                                            const remaining = item.required - item.used; 
-                                            const isDone = remaining <= 0; 
+                                            const remaining = item.isUnmatched ? item.used : item.required - item.used; 
+                                            const isDone = !item.isUnmatched && remaining <= 0; 
                                             const id = `rem-${i}`;
                                             const isSelected = selectedCells.has(id);
+                                            // 총 길이 -> 1본 기준 길이 (수량 무시)
+                                            const lengthSum = item.length;
+                                            
                                             return (
-                                                <tr key={i} className={`border-b ${isDone ? 'bg-gray-100 text-gray-400' : 'hover:bg-indigo-50'} ${isSelected ? 'bg-blue-100' : ''}`} onClick={(e) => !isDone && handleCellClick(e, id, remaining)}>
-                                                    <td className="p-1 cursor-default">{item.t}/{item.w}/{item.h}</td>
-                                                    <td className="p-1 font-bold cursor-default">{item.length}</td>
-                                                    <td className={`p-1 cursor-pointer font-bold ${remaining < 0 ? 'text-red-500' : (remaining === 0 ? 'text-green-500' : (isSelected ? 'text-blue-700' : 'text-black'))}`}>{remaining}</td>
-                                                    <td className="p-1 text-left truncate max-w-[60px] cursor-default" title={item.marking}>{item.marking}</td>
+                                                <tr key={i} 
+                                                    className={`border-b ${item.isUnmatched ? 'bg-red-50 hover:bg-red-100 cursor-pointer' : (isDone ? 'bg-gray-100 text-gray-400' : 'hover:bg-indigo-50 cursor-pointer')} ${isSelected ? 'bg-blue-100' : ''}`} 
+                                                    onMouseDown={(e) => !isDone && handleMouseDown(e, id, lengthSum)}
+                                                    onMouseEnter={() => !isDone && handleMouseEnter(id, lengthSum)}
+                                                >
+                                                    <td className="p-1">{item.t}/{item.w}/{item.h}</td>
+                                                    <td className="p-1 font-bold">{item.length}</td>
+                                                    <td className={`p-1 font-bold ${item.isUnmatched ? 'text-red-600' : (remaining < 0 ? 'text-red-500' : (remaining === 0 ? 'text-green-500' : (isSelected ? 'text-blue-700' : 'text-black')))}`}>
+                                                        {item.isUnmatched ? `+${item.used}` : remaining}
+                                                    </td>
+                                                    <td className="p-1 text-left truncate max-w-[60px]" title={item.marking}>
+                                                        {item.marking}
+                                                        {item.isUnmatched && <span className="ml-1 text-[10px] text-red-500 font-bold">(견적외)</span>}
+                                                    </td>
                                                 </tr>
                                             ); 
                                         })}
                                     </tbody>
+                                    {remainingItems.length > 0 && (
+                                        <tfoot className="bg-indigo-100 font-bold sticky bottom-0 shadow-[0_-2px_4px_rgba(0,0,0,0.05)] border-t border-indigo-200 z-10">
+                                            <tr>
+                                                <td colSpan="2" className="p-2 text-center text-indigo-900">사용 총계</td>
+                                                <td className="p-2 text-blue-700 text-base">{totalUsedQty.toLocaleString()}</td>
+                                                <td className="p-2 text-indigo-900 text-right pr-3">{totalUsedWeight.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3})} kg</td>
+                                            </tr>
+                                        </tfoot>
+                                    )}
                                 </table>
                             </div>
                         </div>
                     </div>
 
-                    {/* 엑셀 스타일 다중 선택 합계 플로팅 바 */}
+                    {/* 엑셀 스타일 다중 선택 총 길이 합계 플로팅 바 (MM 단위) */}
                     {selectedCells.size > 0 && (
                         <div className="fixed bottom-6 right-6 bg-gray-800 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-6 border border-gray-600 z-50 animate-fade-in">
                             <span className="text-sm">선택 항목수: <b className="text-blue-300">{selectedCells.size}</b></span>
                             <div className="h-6 w-px bg-gray-600"></div>
-                            <span className="text-lg font-bold">합계: <span className="text-green-400">{selectedSum.toLocaleString()}</span></span>
+                            <div className="flex flex-col text-right">
+                                <span className="text-xs text-gray-300">총 길이 합계 (1본 기준)</span>
+                                <span className="text-lg font-bold text-green-400">{selectedSum.toLocaleString()} <span className="text-sm">mm</span></span>
+                            </div>
                             <button onClick={() => setSelectedCells(new Map())} className="ml-2 text-gray-400 hover:text-white"><X size={16}/></button>
                         </div>
                     )}
@@ -565,16 +759,16 @@
             );
         };
 
-        // --- Result View (Includes manual_result logic) ---
-        const ResultView = ({ currentDong, dongs, setCurrentDong, resultsByDong, projectInfo, isNoDongMode, openExcelModal, openStockModal, setViewMode }) => {
-            const [resultTab, setResultTab] = useState('manual_result'); // App 2는 수동 결과가 메인
+        // --- Result View (결과창에서 바로 저장할 버전 체크 가능) ---
+        const ResultView = ({ currentDong, dongs, setCurrentDong, addDong, deleteDong, renameDong, resultsByDong, projectInfo, isNoDongMode, openExcelModal, openStockModal, setViewMode, setManualData, exportSelections, toggleSelection }) => {
+            const [resultTab, setResultTab] = useState('min_rows'); 
             const allResults = resultsByDong && currentDong ? resultsByDong[currentDong] : null;
             
             // 탭 자동 전환
             useEffect(() => {
                 if (allResults && !allResults[resultTab]) {
-                    if (allResults['manual_result']) setResultTab('manual_result');
-                    else if (allResults['min_rows']) setResultTab('min_rows');
+                    if (allResults['min_rows']) setResultTab('min_rows');
+                    else if (allResults['manual_result']) setResultTab('manual_result');
                 }
             }, [currentDong, allResults]);
 
@@ -582,27 +776,62 @@
             const specKeys = results ? Object.keys(results).sort() : [];
             let overallSeq = 1;
 
-            const handlePdfDownload = () => window.print();
+            const handleCopyToManual = () => {
+                if (!results) return;
+                const newRows = [];
+                specKeys.forEach(specKey => {
+                    const { plan } = results[specKey];
+                    let w = "100", h = "100", t = "2.1";
+                    try { const dims = specKey.split(' ')[0] || ""; const tPart = specKey.split(' ')[1] || ""; if (dims.includes('*')) [w, h] = dims.split('*'); else if (dims.includes('x')) [w, h] = dims.split('x'); t = tPart.replace('T', ''); } catch (e) { }
+                    let sortedPlan = [...plan]; sortedPlan.sort((a, b) => b.stockLength - a.stockLength);
+                    sortedPlan.forEach((group) => {
+                        const cuts = Array(8).fill().map(() => ({ l: '', count: '', marking: '', isYellow: false }));
+                        group.parts.forEach((part, idx) => { if (idx < 8) cuts[idx] = { l: part.length, count: (part.totalQty / group.qty), marking: part.marking, isYellow: part.isYellow || false }; });
+                        // App1 결과를 수동으로 복사할 때 remark 도 같이 넘겨줌
+                        newRows.push({ id: Date.now() + Math.random(), t: t, w: w, h: h, l: group.stockLength, qty: Math.floor(group.qty), remark: group.remark || '', cuts: cuts });
+                    });
+                });
+                
+                if (confirm(`현재 보고 있는 버전을 '${currentDong}'의 수동 편집 화면으로 복사하시겠습니까?\n(기존에 수동으로 작성 중이던 데이터는 지워집니다.)`)) {
+                    setManualData(prev => ({ ...prev, [currentDong]: newRows }));
+                    setViewMode('manual');
+                    alert("수동 편집 화면으로 복사되었습니다.");
+                }
+            };
+
+            // 현재 보고 있는 탭의 체크 여부
+            const isCurrentTabChecked = (exportSelections[currentDong] || []).includes(resultTab);
 
             return (
                 <div id="main-content" className="animate-fade-in pb-20 print:w-full print:m-0">
                     <div className="flex justify-between items-center mb-4 print:hidden">
                         <h2 className="text-lg font-bold text-gray-800">최종 출력 및 보고서 {isNoDongMode ? '' : `(${currentDong})`}</h2>
                         <div className="flex gap-2">
-                            <button onClick={() => setViewMode('manual')} className="bg-indigo-50 border border-indigo-600 text-indigo-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-indigo-100 transition flex items-center gap-2"><Edit3 size={16} /> CP 직접 편집</button>
+                            <button onClick={handleCopyToManual} className="bg-indigo-50 border border-indigo-600 text-indigo-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-indigo-100 transition flex items-center gap-2"><Copy size={16} /> 이 버전을 바탕으로 수정하기</button>
                             <button onClick={openStockModal} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:bg-red-600 transition flex items-center gap-2"><Cloud size={16} /> 재고 차감 (선택)</button>
                             <button onClick={openExcelModal} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:bg-green-700 flex items-center gap-2 transition"><FileDown size={16} /> 엑셀 파일 저장</button>
                         </div>
                     </div>
                     
-                    {!isNoDongMode && <DongTabs dongs={dongs} currentDong={currentDong} setCurrentDong={setCurrentDong} />}
+                    {!isNoDongMode && <DongTabs dongs={dongs} currentDong={currentDong} setCurrentDong={setCurrentDong} addDong={addDong} deleteDong={deleteDong} renameDong={renameDong} />}
                     
                     {(!allResults || !results) ? (<div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300 text-gray-400"><p>현재 탭에 표시할 결과가 없습니다.</p></div>) : (
                         <div>
-                            <div className="flex mb-4 border-b print:hidden gap-2">
-                                {allResults['min_rows'] && <button onClick={() => setResultTab('min_rows')} className={`px-6 py-3 font-bold text-sm ${resultTab === 'min_rows' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>① 초안: 작업 편의 (App1)</button>}
-                                {allResults['min_loss'] && <button onClick={() => setResultTab('min_loss')} className={`px-6 py-3 font-bold text-sm ${resultTab === 'min_loss' ? 'border-b-2 border-green-600 text-green-600' : 'text-gray-500 hover:text-gray-700'}`}>② 초안: LOSS 최소화 (App1)</button>}
-                                {allResults['manual_result'] && <button onClick={() => setResultTab('manual_result')} className={`px-6 py-3 font-bold text-sm ${resultTab === 'manual_result' ? 'border-b-2 border-purple-600 text-purple-600' : 'text-gray-500 hover:text-gray-700'}`}>③ 최종: 수동 편집 결과</button>}
+                            <div className="flex mb-4 border-b print:hidden gap-2 items-center justify-between">
+                                <div className="flex gap-2">
+                                    {allResults['min_rows'] && <button onClick={() => setResultTab('min_rows')} className={`px-6 py-3 font-bold text-sm ${resultTab === 'min_rows' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>① 초안: 작업 편의 (App1)</button>}
+                                    {allResults['min_loss'] && <button onClick={() => setResultTab('min_loss')} className={`px-6 py-3 font-bold text-sm ${resultTab === 'min_loss' ? 'border-b-2 border-green-600 text-green-600' : 'text-gray-500 hover:text-gray-700'}`}>② 초안: LOSS 최소화 (App1)</button>}
+                                    {allResults['manual_result'] && <button onClick={() => setResultTab('manual_result')} className={`px-6 py-3 font-bold text-sm ${resultTab === 'manual_result' ? 'border-b-2 border-purple-600 text-purple-600' : 'text-gray-500 hover:text-gray-700'}`}>③ 최종: 수동 편집 결과</button>}
+                                </div>
+                                
+                                {/* 여기서 바로 저장할 버전을 체크할 수 있습니다 */}
+                                <label className={`flex items-center gap-2 px-4 py-2 rounded-lg cursor-pointer transition border-2 font-bold ${isCurrentTabChecked ? 'bg-green-50 border-green-500 text-green-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                                    <input type="checkbox" className="w-5 h-5 cursor-pointer accent-green-600" 
+                                        checked={isCurrentTabChecked} 
+                                        onChange={() => toggleSelection(currentDong, resultTab)} 
+                                    />
+                                    <span>현재 버전 엑셀 저장 대상으로 체크</span>
+                                </label>
                             </div>
                             <div className="space-y-8 bg-white p-8 rounded-xl shadow-sm border border-gray-200 min-h-screen print:border-none print:p-0">
                                 {specKeys.map((specKey, idx) => {
@@ -611,20 +840,40 @@
                                     const totalBarsDisplay = summary.totalBars || plan.reduce((acc, p) => acc + Number(p.qty || 0), 0);
                                     const totalLossValue = summary.totalLoss !== undefined ? summary.totalLoss : plan.reduce((acc, p) => acc + (Number(p.remainder || 0) * Number(p.qty || 0)), 0);
                                     const displayLoss = Number(totalLossValue).toLocaleString();
+
+                                    // 중량 계산
+                                    const unitWeight = getUnitWeight(w, h, t);
+                                    let totalStockLen = 0;
+                                    plan.forEach(group => { totalStockLen += (group.stockLength * group.qty); });
+                                    const inputWeight = (totalStockLen / 1000) * unitWeight;
+                                    const lossWeight = (totalLossValue / 1000) * unitWeight;
+                                    const prodWeight = inputWeight - lossWeight;
+
                                     return (
                                         <div key={specKey || idx} className="break-before-page">
                                             <div className="flex items-center gap-3 mb-3 pb-2 border-b border-gray-100 print:border-none">
                                                 <span className={`font-bold px-3 py-1 rounded text-sm print:hidden ${resultTab === 'min_rows' ? 'bg-blue-100 text-blue-700' : (resultTab === 'min_loss' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700')}`}>#{idx + 1} {resultTab === 'min_rows' ? '작업편의' : (resultTab === 'min_loss' ? 'LOSS최소' : '수동결과')}</span>
                                                 <h3 className="font-bold text-xl text-gray-800">{specKey}</h3>
-                                                <div className="text-xs text-gray-500 ml-auto flex gap-4 print:text-black"><span>총 원본: <b>{totalBarsDisplay}본</b></span><span>총 잔재: <b>{displayLoss}mm</b></span><span>잔재율: {summary.lossRate}%</span></div>
+                                                <div className="text-xs text-gray-500 ml-auto flex flex-col items-end gap-1 print:text-black">
+                                                    <div className="flex gap-4">
+                                                        <span>총 원본: <b>{totalBarsDisplay}본</b></span><span>총 잔재: <b>{displayLoss}mm</b></span><span>잔재율: {summary.lossRate}%</span>
+                                                    </div>
+                                                    {unitWeight > 0 && (
+                                                        <div className="flex gap-4 text-indigo-600 font-bold">
+                                                            <span>투입 중량: {inputWeight.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3})}kg</span>
+                                                            <span>생산 중량: {prodWeight.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3})}kg</span>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                             <table className="w-full border-collapse text-center text-xs">
-                                                <thead><tr className="bg-gray-100 text-gray-700 h-8 border-y border-gray-300 print:bg-gray-200"><th className="border-x border-gray-200 w-10">순번</th><th className="border-x border-gray-200 w-12">두께</th><th className="border-x border-gray-200 w-12">장변</th><th className="border-x border-gray-200 w-12">단변</th><th className="border-x border-gray-200 w-16">원본길이</th><th className="border-x border-gray-200 w-12">수량</th><th className="border-x border-gray-200 w-16 bg-white font-bold text-blue-600 border-2 border-blue-100 print:border">컷팅길이</th><th className="border-x border-gray-200 w-12">컷팅수</th><th className="border-x border-gray-200 w-12">수량</th><th className="border-x border-gray-200">마킹</th><th className="border-x border-gray-200 w-16">본당LOSS</th><th className="border-x border-gray-200 w-20">총LOSS</th></tr></thead>
+                                                <thead><tr className="bg-gray-100 text-gray-700 h-8 border-y border-gray-300 print:bg-gray-200"><th className="border-x border-gray-200 w-10">순번</th><th className="border-x border-gray-200 w-12">두께</th><th className="border-x border-gray-200 w-12">장변</th><th className="border-x border-gray-200 w-12">단변</th><th className="border-x border-gray-200 w-16">원본길이</th><th className="border-x border-gray-200 w-12">수량</th><th className="border-x border-gray-200 w-16 bg-white font-bold text-blue-600 border-2 border-blue-100 print:border">컷팅길이</th><th className="border-x border-gray-200 w-12">컷팅수</th><th className="border-x border-gray-200 w-12">수량</th><th className="border-x border-gray-200">마킹</th><th className="border-x border-gray-200 w-16">본당LOSS</th><th className="border-x border-gray-200 w-20">총LOSS</th><th className="border-x border-gray-200 w-16">비고</th></tr></thead>
                                                 <tbody>
                                                     {plan.map((group, gIdx) => {
                                                         const rowClass = 'bg-white';
-                                                        const maxPartLength = Math.max(...group.parts.map(p => p.length));
-                                                        const isHighlightCondition = group.remainder <= 270 && maxPartLength >= 1000 && maxPartLength <= 2700;
+                                                        const validCutLengths = group.parts.map(p => parseFloat(p.length || 0));
+                                                        const maxPartLength = validCutLengths.length > 0 ? Math.max(...validCutLengths) : 0;
+                                                        const isHighlightCondition = group.remainder <= 270 && (group.remainder + maxPartLength) >= 1000 && (group.remainder + maxPartLength) <= 2700;
 
                                                         return group.parts.map((part, pIdx) => (
                                                             <tr key={`${gIdx}-${pIdx}`} className={`${rowClass} border-b border-gray-200 hover:bg-gray-50 transition print:bg-transparent`}>
@@ -638,11 +887,15 @@
                                                                         <td rowSpan={group.parts.length} className="border-x border-gray-200">{Math.floor(group.qty)}</td>
                                                                     </>
                                                                 )}
-                                                                <td className="border-x border-gray-200 font-bold text-gray-800">{part.length}</td><td className="border-x border-gray-200">{(part.totalQty / group.qty)}</td><td className="border-x border-gray-200 font-bold">{Math.floor(part.totalQty)}</td><td className="border-x border-gray-200 text-left px-2 truncate max-w-[150px]">{part.marking}</td>
+                                                                <td className={`border-x border-gray-200 font-bold text-gray-800 ${part.isYellow ? 'bg-yellow-100' : ''}`}>{part.length}</td>
+                                                                <td className={`border-x border-gray-200 ${part.isYellow ? 'bg-yellow-100' : ''}`}>{(part.totalQty / group.qty)}</td>
+                                                                <td className={`border-x border-gray-200 font-bold ${part.isYellow ? 'bg-yellow-100' : ''}`}>{Math.floor(part.totalQty)}</td>
+                                                                <td className={`border-x border-gray-200 text-left px-2 truncate max-w-[150px] ${part.isYellow ? 'bg-yellow-100' : ''}`}>{part.marking}</td>
                                                                 {pIdx === 0 && (
                                                                     <>
                                                                         <td rowSpan={group.parts.length} className={`border-x border-gray-200 font-bold ${group.remainder >= 400 ? 'bg-[#FFCCBC] text-red-600' : ''}`}>{Number(group.remainder).toLocaleString()}</td>
                                                                         <td rowSpan={group.parts.length} className="border-x border-gray-200 text-gray-500">{(Number(group.remainder) * Number(group.qty)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                                                                        <td rowSpan={group.parts.length} className="border-x border-gray-200 text-gray-600 text-left px-1">{group.remark || ''}</td>
                                                                     </>
                                                                 )}
                                                             </tr>
@@ -668,11 +921,9 @@
                 try {
                     let jsonStr;
                     if (code.startsWith('SMARTCP-v2-')) {
-                        // LZString 압축 해제
                         const compressed = code.substring(11);
                         jsonStr = LZString.decompressFromBase64(compressed);
                     } else if (code.startsWith('SMARTCP-v1-')) {
-                        // 구버전 Base64 해제
                         const encoded = code.substring(11);
                         jsonStr = decodeURIComponent(escape(atob(encoded)));
                     } else {
@@ -683,7 +934,7 @@
                     const data = JSON.parse(jsonStr);
                     onImport(data);
                 } catch(e) {
-                    alert("소스 코드를 불러오는 중 오류가 발생했습니다. 코드가 온전한지 확인해주세요.\n" + e.message);
+                    alert("소스 코드를 불러오는 중 오류가 발생했습니다.\n" + e.message);
                 }
             };
 
@@ -731,8 +982,11 @@
 
             const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
             const [isStockModalOpen, setIsStockModalOpen] = useState(false);
+            
+            // 엑셀 저장을 위한 버전 선택 상태 관리 (기본적으로 모두 체크 해제된 상태로 초기화)
+            const [exportSelections, setExportSelections] = useState({});
 
-            // Google Auth for Stock Deduction
+            // Google Auth
             const [tokenClient, setTokenClient] = useState(null);
             const [isLoggedIn, setIsLoggedIn] = useState(false);
 
@@ -757,34 +1011,61 @@
                 setDongs(data.dongs || ['1동']);
                 setCurrentDong(data.dongs && data.dongs.length > 0 ? data.dongs[0] : '1동');
                 setResultsByDong(data.resultsByDong || {});
-                setDongData(data.dongData || {});
-
-                // App1 결과를 ManualData 형태로 변환하여 초기 세팅
-                const initialManual = {};
-                const sourceResults = data.resultsByDong || {};
+                
+                const initialDongData = data.dongData || {};
                 (data.dongs || []).forEach(dName => {
-                    const res = sourceResults[dName];
-                    const mode = res?.min_rows ? 'min_rows' : (res?.min_loss ? 'min_loss' : null);
-                    if (res && mode) {
-                        const newRows = [];
-                        Object.keys(res[mode]).sort().forEach(specKey => {
-                            const { plan } = res[mode][specKey];
-                            let w = "100", h = "100", t = "2.1";
-                            try { const dims = specKey.split(' ')[0] || ""; const tPart = specKey.split(' ')[1] || ""; if (dims.includes('*')) [w, h] = dims.split('*'); else if (dims.includes('x')) [w, h] = dims.split('x'); t = tPart.replace('T', ''); } catch (e) { }
-                            let sortedPlan = [...plan].sort((a, b) => b.stockLength - a.stockLength);
-                            sortedPlan.forEach((group) => {
-                                const cuts = Array(8).fill().map(() => ({ l: '', count: '', marking: '' }));
-                                group.parts.forEach((part, idx) => { if (idx < 8) cuts[idx] = { l: part.length, count: (part.totalQty / group.qty), marking: part.marking }; });
-                                newRows.push({ id: Date.now() + Math.random(), t, w, h, l: group.stockLength, qty: Math.floor(group.qty), cuts });
-                            });
-                        });
-                        initialManual[dName] = newRows;
-                    } else {
-                        initialManual[dName] = [];
+                    if (!initialDongData[dName]) {
+                        initialDongData[dName] = { gridData: [], colMapping: { 1: 'width', 2: 'height', 3: 'thickness', 4: 'length', 8: 'qty', 13: 'marking' }, parsedItems: [], spec: '100*100', thickness: '2.1' };
                     }
                 });
+                setDongData(initialDongData);
+
+                const initialManual = {};
+                const initialSelections = {};
+                (data.dongs || []).forEach(dName => {
+                    initialManual[dName] = [];
+                    // 빈 배열로 세팅하여 아무것도 체크되어 있지 않도록 함
+                    initialSelections[dName] = []; 
+                });
                 setManualData(initialManual);
+                setExportSelections(initialSelections);
                 setIsLoaded(true);
+                // 초기 화면을 '원본 견적 관리' 탭으로 변경
+                setViewMode('original');
+            };
+            
+            // 버전 체크 토글 함수
+            const toggleSelection = (dong, mode) => {
+                setExportSelections(prev => {
+                    const current = prev[dong] || [];
+                    const updated = current.includes(mode) 
+                        ? current.filter(m => m !== mode)
+                        : [...current, mode];
+                    return { ...prev, [dong]: updated };
+                });
+            };
+
+            const getCurrentData = () => dongData[currentDong] || { rawInput: '', gridData: [], colMapping: {}, parsedItems: [], spec: '100*100', thickness: '2.1' };
+            const updateCurrentData = (updates) => { 
+                setDongData(prev => ({ 
+                    ...prev, 
+                    [currentDong]: { ...(prev[currentDong] || {}), ...updates } 
+                })); 
+            };
+
+            const addDong = () => { const newDongName = prompt("새 동 이름을 입력하세요:"); if (newDongName && !dongs.includes(newDongName)) { setDongs([...dongs, newDongName]); setDongData(prev => ({ ...prev, [newDongName]: { rawInput: '', gridData: [], colMapping: { 1: 'width', 2: 'height', 3: 'thickness', 4: 'length', 8: 'qty', 13: 'marking' }, parsedItems: [], spec: '100*100', thickness: '2.1' } })); setCurrentDong(newDongName); } };
+            const renameDong = (oldName) => { const newName = prompt(`'${oldName}'의 새 이름을 입력하세요:`, oldName); if (newName && newName !== oldName && !dongs.includes(newName)) { setDongs(prev => prev.map(d => d === oldName ? newName : d)); if (currentDong === oldName) setCurrentDong(newName); setDongData(prev => { const n = { ...prev }; n[newName] = n[oldName]; delete n[oldName]; return n; }); setResultsByDong(prev => { const n = { ...prev }; if (n[oldName]) { n[newName] = n[oldName]; delete n[oldName]; } return n; }); setManualData(prev => { const n = { ...prev }; n[newName] = n[oldName]; delete n[oldName]; return n; }); } };
+            const deleteDong = (targetDong) => { if (dongs.length <= 1) { alert("최소 하나의 동은 있어야 합니다."); return; } if (confirm(`'${targetDong}'을 삭제하시겠습니까?`)) { const newDongs = dongs.filter(d => d !== targetDong); setDongs(newDongs); if (currentDong === targetDong) setCurrentDong(newDongs[0]); setDongData(prev => { const n = { ...prev }; delete n[targetDong]; return n; }); setResultsByDong(prev => { const n = { ...prev }; delete n[targetDong]; return n; }); setManualData(prev => { const n = { ...prev }; delete n[targetDong]; return n; }); } };
+
+            const handlePaste = (e) => { 
+                e.preventDefault(); 
+                const text = e.clipboardData.getData('text'); 
+                const rows = text.trim().split('\n').map(row => row.split('\t')); 
+                const currentMapping = dongData[currentDong]?.colMapping;
+                const newMapping = (currentMapping && Object.keys(currentMapping).length > 0) 
+                    ? currentMapping 
+                    : { 1: 'width', 2: 'height', 3: 'thickness', 4: 'length', 8: 'qty', 13: 'marking' };
+                updateCurrentData({ rawInput: text, gridData: rows, colMapping: newMapping }); 
             };
 
             const handleManualToResult = (rows) => { 
@@ -798,13 +1079,13 @@
                     if (row.cuts) { 
                         row.cuts.forEach(c => { 
                             if (c.l && c.count) { 
-                                parts.push({ length: parseFloat(c.l), count: parseInt(c.count), marking: c.marking || '', totalQty: parseInt(c.count) * parseInt(row.qty) }); 
+                                parts.push({ length: parseFloat(c.l), count: parseInt(c.count), marking: c.marking || '', totalQty: parseInt(c.count) * parseInt(row.qty), isYellow: c.isYellow || false }); 
                             } 
                         }); 
                     } 
                     const usedLenInOneBar = parts.reduce((sum, p) => sum + (p.length * p.count), 0); 
                     const remainder = parseFloat(row.l) - usedLenInOneBar; 
-                    groups[specKey].push({ stockLength: parseFloat(row.l), qty: parseInt(row.qty), parts: parts, remainder: remainder }); 
+                    groups[specKey].push({ stockLength: parseFloat(row.l), qty: parseInt(row.qty), parts: parts, remainder: remainder, remark: row.remark || '' }); 
                 }); 
                 const computedResults = {}; 
                 Object.keys(groups).forEach(specKey => { 
@@ -819,7 +1100,6 @@
                 setViewMode('result'); 
             };
 
-            // --- Excel Export Engine ---
             const fillWorksheet = async (worksheet, targetDong, mode) => { 
                 const allResults = resultsByDong[targetDong]; const results = allResults[mode]; const specKeys = Object.keys(results).sort(); 
                 worksheet.columns = [{ width: 7 }, { width: 7 }, { width: 7 }, { width: 7 }, { width: 12 }, { width: 8 }, { width: 12 }, { width: 8 }, { width: 8 }, { width: 22 }, { width: 12 }, { width: 14 }, { width: 12 }, { width: 5 }, { width: 5 }, { width: 5 }, { width: 20 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 18 }]; 
@@ -836,7 +1116,9 @@
                 specKeys.forEach(specKey => { const { plan } = results[specKey]; let w = "?", h = "?", t = "?"; try { const dims = specKey.split(' ')[0] || ""; const thick = specKey.split(' ')[1] || ""; if (dims.includes('*')) [w, h] = dims.split('*'); else if (dims.includes('x')) [w, h] = dims.split('x'); t = thick.replace('T', ''); } catch (e) { } const unitWeight = getUnitWeight(w, h, t); const statKey = `${t}|${w}|${h}`; if (!statsMap[statKey]) { statsMap[statKey] = { t, w, h, inputLen: 0, inputWt: 0, prodLen: 0, prodWt: 0 }; } 
                 let sortedPlan = [...plan]; sortedPlan.sort((a, b) => b.stockLength - a.stockLength); 
                 sortedPlan.forEach(group => { grandTotalStockQty += Number(group.qty || 0); grandTotalLoss += (Number(group.remainder || 0) * Number(group.qty || 0)); const summaryKey = `${t}|${w}|${h}|${group.stockLength}`; if (!stockSummary[summaryKey]) stockSummary[summaryKey] = 0; stockSummary[summaryKey] += Number(group.qty || 0); const inL = Number(group.stockLength || 0) * Number(group.qty || 0); statsMap[statKey].inputLen += inL; statsMap[statKey].inputWt += (inL / 1000 * unitWeight); const groupStartRow = currentRow; const rowHeight = Math.max(1, (group.parts || []).length); const groupColor = { type: 'pattern', pattern: 'solid', fgColor: { argb: specColorMap[specKey] } }; 
-                (group.parts || []).forEach((part, pIdx) => { grandTotalCutQty += Number(part.totalQty || 0); const outL = Number(part.length || 0) * Number(part.totalQty || 0); statsMap[statKey].prodLen += outL; statsMap[statKey].prodWt += (outL / 1000 * unitWeight); const partKey = `${t}|${w}|${h}|${part.length}|${part.marking}`; if (cutPartMap.has(partKey)) { cutPartMap.get(partKey).qty += Number(part.totalQty || 0); } else { cutPartMap.set(partKey, { t, w, h, length: part.length, qty: Number(part.totalQty || 0), marking: part.marking, specKey }); } const row = worksheet.getRow(currentRow); if (pIdx === 0) { row.getCell(1).value = seq++; row.getCell(2).value = t; row.getCell(3).value = w; row.getCell(4).value = h; row.getCell(5).value = Number(group.stockLength); row.getCell(6).value = Math.floor(group.qty); } row.getCell(7).value = Number(part.length); row.getCell(8).value = (part.totalQty / group.qty); row.getCell(9).value = Math.floor(part.totalQty); row.getCell(10).value = part.marking; if (pIdx === 0) { row.getCell(11).value = Number(group.remainder); row.getCell(12).value = Number(group.remainder) * Number(group.qty); } for (let c = 1; c <= 13; c++) { const cell = row.getCell(c); cell.border = borderAll; cell.alignment = alignCenter; cell.font = fontNormal; if (c <= 5) { cell.fill = groupColor; } else if (c === 6 || c === 9) { cell.fill = fillLightGray; } else { cell.fill = fillWhite; } if ([5, 6, 9, 11, 12].includes(c)) cell.numFmt = '#,##0'; } row.getCell(5).font = fontBold; row.getCell(7).font = fontBold; row.getCell(9).font = fontBold; if (pIdx === 0 && Number(group.remainder) >= 400) { const lossCell = row.getCell(11); lossCell.fill = fillRed; lossCell.font = fontRedBold; } currentRow++; }); 
+                (group.parts || []).forEach((part, pIdx) => { grandTotalCutQty += Number(part.totalQty || 0); const outL = Number(part.length || 0) * Number(part.totalQty || 0); statsMap[statKey].prodLen += outL; statsMap[statKey].prodWt += (outL / 1000 * unitWeight); const partKey = `${t}|${w}|${h}|${part.length}|${part.marking}`; if (cutPartMap.has(partKey)) { cutPartMap.get(partKey).qty += Number(part.totalQty || 0); } else { cutPartMap.set(partKey, { t, w, h, length: part.length, qty: Number(part.totalQty || 0), marking: part.marking, specKey }); } const row = worksheet.getRow(currentRow); if (pIdx === 0) { row.getCell(1).value = seq++; row.getCell(2).value = t; row.getCell(3).value = w; row.getCell(4).value = h; row.getCell(5).value = Number(group.stockLength); row.getCell(6).value = Math.floor(group.qty); } row.getCell(7).value = Number(part.length); row.getCell(8).value = (part.totalQty / group.qty); row.getCell(9).value = Math.floor(part.totalQty); row.getCell(10).value = part.marking; if (pIdx === 0) { row.getCell(11).value = Number(group.remainder); row.getCell(12).value = Number(group.remainder) * Number(group.qty); row.getCell(13).value = group.remark || ''; } for (let c = 1; c <= 13; c++) { const cell = row.getCell(c); cell.border = borderAll; cell.alignment = alignCenter; cell.font = fontNormal; if (c <= 5) { cell.fill = groupColor; } else if (c === 6 || c === 9) { cell.fill = fillLightGray; } else { cell.fill = fillWhite; } if ([5, 6, 9, 11, 12].includes(c)) cell.numFmt = '#,##0'; } 
+                if (part.isYellow) { for (let c = 7; c <= 10; c++) { row.getCell(c).fill = fillYellow; } }
+                row.getCell(5).font = fontBold; row.getCell(7).font = fontBold; row.getCell(9).font = fontBold; if (pIdx === 0 && Number(group.remainder) >= 400) { const lossCell = row.getCell(11); lossCell.fill = fillRed; lossCell.font = fontRedBold; } currentRow++; }); 
                 if (rowHeight > 1) { const endRow = groupStartRow + rowHeight - 1; [1, 2, 3, 4, 5, 6, 11, 12, 13].forEach(c => worksheet.mergeCells(groupStartRow, c, endRow, c)); } const lastRowOfGroup = worksheet.getRow(currentRow - 1); for (let c = 1; c <= 13; c++) lastRowOfGroup.getCell(c).border = { ...borderAll, bottom: { style: 'medium' } }; }); }); 
                 const totalRow = worksheet.getRow(currentRow); totalRow.getCell(1).value = '합 계'; worksheet.mergeCells(currentRow, 1, currentRow, 5); totalRow.getCell(6).value = Math.floor(grandTotalStockQty); totalRow.getCell(7).value = '합 계'; worksheet.mergeCells(currentRow, 7, currentRow, 8); totalRow.getCell(9).value = Math.floor(grandTotalCutQty); totalRow.getCell(12).value = grandTotalLoss; for (let c = 1; c <= 13; c++) { const cell = totalRow.getCell(c); cell.fill = fillTotal; cell.font = fontBold; cell.border = borderAll; cell.alignment = alignCenter; if ([6, 9, 12].includes(c)) cell.numFmt = '#,##0'; } const mainTableEndRow = currentRow; currentRow += 4; 
                 const statsStartRow = 5; const statsColStart = 17; const statsTitleRow = worksheet.getRow(statsStartRow); statsTitleRow.getCell(statsColStart).value = '중량 및 길이 집계표'; worksheet.mergeCells(statsStartRow, statsColStart, statsStartRow, statsColStart + 5); statsTitleRow.getCell(statsColStart).style = { font: fontBold, fill: fillHeader, alignment: alignCenter, border: borderAll }; const statsHeaderRow = worksheet.getRow(statsStartRow + 1); ['규격', '투입 길이(m)', '생산 길이(m)', '투입 중량(kg)', '생산 중량(kg)', 'LOSS 중량(kg)'].forEach((h, i) => { const cell = statsHeaderRow.getCell(statsColStart + i); cell.value = h; cell.style = { font: fontBold, fill: fillHeader, alignment: alignCenter, border: borderAll }; }); let grandInLen = 0, grandProdLen = 0, grandInWt = 0, grandProdWt = 0; let statsRowIdx = statsStartRow + 2; const sortedStatKeys = Object.keys(statsMap).sort((a, b) => { const [t1, w1, h1] = a.split('|').map(Number); const [t2, w2, h2] = b.split('|').map(Number); if (w1 !== w2) return w2 - w1; if (h1 !== h2) return h2 - h1; return t1 - t2; }); 
@@ -848,60 +1130,58 @@
                 const maxPrintRow = Math.max(mainTableEndRow, rawRowIdx, prodRowIdx); worksheet.pageSetup = { orientation: 'portrait', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.25, right: 0.25, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 }, printArea: `A1:M${maxPrintRow}` }; 
             };
 
-            const handleExcelExport = async (targetType, modeData) => { 
+            const handleExcelExport = async () => { 
                 try { 
-                    const targets = targetType === 'current' ? [currentDong] : dongs; 
-                    let hasSheets = false; const masterWorkbook = new ExcelJS.Workbook(); 
-                    
-                    for (const dName of targets) { 
+                    let downloadedCount = 0;
+
+                    for (const dName of dongs) { 
+                        const selectedModesForDong = exportSelections[dName] || [];
+                        if (selectedModesForDong.length === 0) continue; // 이 동은 선택된 버전이 없으면 스킵
+
                         const res = resultsByDong[dName]; 
                         if (res) { 
-                            // targetType === 'current' 이면 modeData는 string ('min_rows' 등)
-                            // targetType === 'all' 이면 modeData는 object ({'1동':'min_rows', ...})
-                            const selectedMode = typeof modeData === 'string' ? modeData : modeData[dName];
+                            const masterWorkbook = new ExcelJS.Workbook(); 
+                            let hasSheets = false;
                             
-                            if (res[selectedMode]) { 
-                                const sheetName = `${dName}_${selectedMode === 'min_rows' ? '작업' : (selectedMode === 'min_loss' ? 'LOSS' : '수동')}`; 
-                                const sheet = masterWorkbook.addWorksheet(sheetName); 
-                                await fillWorksheet(sheet, dName, selectedMode); 
-                                hasSheets = true; 
-                            } 
+                            // 선택한 버전들마다 각각 시트를 생성
+                            for (const mode of selectedModesForDong) {
+                                if (res[mode]) {
+                                    const sheetName = `${dName}_${mode === 'min_rows' ? '작업' : (mode === 'min_loss' ? 'LOSS' : '수동')}`; 
+                                    const sheet = masterWorkbook.addWorksheet(sheetName); 
+                                    await fillWorksheet(sheet, dName, mode); 
+                                    hasSheets = true;
+                                }
+                            }
+
+                            if (hasSheets) {
+                                const buffer = await masterWorkbook.xlsx.writeBuffer(); 
+                                // 파일 이름: 업체명_현장명_동이름.xlsx
+                                let fileName = `${projectInfo.company || '업체명'}_${projectInfo.site || '현장명'}`; 
+                                if (!isNoDongMode) fileName += `_${dName}`; 
+                                fileName += '.xlsx'; 
+                                
+                                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }); 
+                                saveAs(blob, fileName); 
+                                downloadedCount++;
+                            }
                         } 
                     } 
-                    if (hasSheets) { 
-                        const buffer = await masterWorkbook.xlsx.writeBuffer(); 
-                        let fileName = `${projectInfo.company || '업체명'}(${projectInfo.site || '현장명'})_생산용`; 
-                        if (targetType === 'current' && !isNoDongMode) fileName += `-${currentDong}`; 
-                        fileName += '.xlsx'; 
-                        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }); 
-                        saveAs(blob, fileName); 
-                        setIsExcelModalOpen(false); 
-                        alert("다운로드가 완료되었습니다."); 
-                    } else { 
-                        alert("선택하신 동/버전에 대한 계산 결과가 없습니다."); 
-                    } 
-                } catch (error) { 
-                    console.error(error); alert("엑셀 저장 중 오류가 발생했습니다: " + error.message); 
-                } 
+                    if (downloadedCount > 0) { 
+                        alert(`총 ${downloadedCount}개의 엑셀 파일 다운로드가 시작되었습니다.`); 
+                    } else { alert("저장할 버전이 선택되지 않았거나 결과가 없습니다."); } 
+                } catch (error) { console.error(error); alert("엑셀 저장 중 오류가 발생했습니다: " + error.message); } 
             };
 
-            const getColumnLetter = (colIndex) => {
-                let temp, letter = '';
-                while (colIndex > 0) { temp = (colIndex - 1) % 26; letter = String.fromCharCode(temp + 65) + letter; colIndex = (colIndex - temp - 1) / 26; }
-                return letter;
-            }
+            const getColumnLetter = (colIndex) => { let temp, letter = ''; while (colIndex > 0) { temp = (colIndex - 1) % 26; letter = String.fromCharCode(temp + 65) + letter; colIndex = (colIndex - temp - 1) / 26; } return letter; }
 
-            const handleUpdateStock = async (targetType, modeData) => {
+            const handleUpdateStock = async (dongModes) => {
                 if (!isLoggedIn) { alert("구글 로그인이 필요합니다."); return; }
-                const usedMap = {}; 
-                const targets = targetType === 'all' ? dongs : [currentDong];
-                let hasData = false;
+                const usedMap = {}; let hasData = false;
 
-                targets.forEach(dName => {
-                    const selectedMode = typeof modeData === 'string' ? modeData : modeData[dName];
-                    if (resultsByDong[dName] && resultsByDong[dName][selectedMode]) {
-                        const planResult = resultsByDong[dName][selectedMode];
-                        hasData = true;
+                Object.keys(dongModes).forEach(dName => {
+                    const selectedMode = dongModes[dName];
+                    if (selectedMode && resultsByDong[dName] && resultsByDong[dName][selectedMode]) {
+                        const planResult = resultsByDong[dName][selectedMode]; hasData = true;
                         Object.keys(planResult).forEach(specKey => {
                             const { plan } = planResult[specKey];
                             plan.forEach(group => {
@@ -917,39 +1197,31 @@
                 if (!hasData) { alert("선택한 범위/모드에 대한 데이터가 없습니다."); return; }
 
                 try {
-                    const headerRange = 'Sheet1!H4:AK4';
-                    const headerRes = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: headerRange });
+                    const headerRange = 'Sheet1!H4:AK4'; const headerRes = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: headerRange });
                     const headers = headerRes.result.values ? headerRes.result.values[0] : [];
                     let emptyColIndex = headers.length; 
                     if(emptyColIndex >= 30) { alert("더 이상 기록할 빈 열이 없습니다 (AK열 초과)."); return; }
-                    const targetColNum = 8 + emptyColIndex; 
-                    const targetColLetter = getColumnLetter(targetColNum);
+                    const targetColNum = 8 + emptyColIndex; const targetColLetter = getColumnLetter(targetColNum);
 
-                    const updateData = [];
-                    const companyName = `${projectInfo.company || '업체미상'}(${projectInfo.site || '현장미상'})`;
+                    const updateData = []; const companyName = `${projectInfo.company || '업체미상'}(${projectInfo.site || '현장미상'})`;
                     updateData.push({ range: `Sheet1!${targetColLetter}4`, values: [[companyName]] });
 
                     SHEET_ROW_MAP.forEach(map => {
                         const key = `${map.w}|${map.h}|${map.t}|${map.l}`;
-                        if(usedMap[key]) {
-                            updateData.push({ range: `Sheet1!${targetColLetter}${map.row}`, values: [[-usedMap[key]]] });
-                        }
+                        if(usedMap[key]) { updateData.push({ range: `Sheet1!${targetColLetter}${map.row}`, values: [[-usedMap[key]]] }); }
                     });
 
                     if(updateData.length === 1) { alert("차감할 재고 사용량이 없습니다."); return; }
-
                     await gapi.client.sheets.spreadsheets.values.batchUpdate({ spreadsheetId: SPREADSHEET_ID, resource: { data: updateData, valueInputOption: 'USER_ENTERED' } });
-                    alert(`재고 차감이 완료되었습니다.\n기록된 열: ${targetColLetter}`);
-                    setIsStockModalOpen(false);
-
+                    alert(`재고 차감이 완료되었습니다.\n기록된 열: ${targetColLetter}`); setIsStockModalOpen(false);
                 } catch (error) { console.error(error); alert("재고 차감 중 오류가 발생했습니다."); }
             };
 
-            if (!isLoaded) return <ImportView onImport={handleImportData} />;
+            const Sidebar = memo(({ viewMode, setViewMode, projectInfo, setProjectInfo, isNoDongMode, setIsNoDongMode }) => {
+                const handleTextChange = useCallback((e, field) => setProjectInfo(prev => ({ ...prev, [field]: e.target.value })), [setProjectInfo]);
+                const handleCheckChange = useCallback((e, field) => setProjectInfo(prev => ({ ...prev, [field]: e.target.checked })), [setProjectInfo]);
 
-            return (
-                <div className="min-h-screen bg-gray-50 text-gray-900 font-sans flex">
-                    {/* Simplified Sidebar for App 2 */}
+                return (
                     <div id="sidebar" className="w-64 bg-white border-r border-gray-200 h-screen flex flex-col fixed left-0 top-0 z-30 print:hidden">
                         <div className="p-6 border-b bg-indigo-50">
                             <h1 className="text-xl font-bold flex items-center gap-2 text-indigo-700"><Edit3 className="text-indigo-600" /> Smart CP Editor</h1>
@@ -957,31 +1229,37 @@
                         </div>
                         <div className="p-4 space-y-4 flex-1 overflow-y-auto">
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-500">불러온 프로젝트 정보 (조회 전용)</label>
-                                <div className="p-3 bg-gray-50 rounded border text-sm font-bold">{projectInfo.company || '업체명 없음'}</div>
-                                <div className="p-3 bg-gray-50 rounded border text-sm font-bold">{projectInfo.site || '현장명 없음'}</div>
-                                {projectInfo.note && <div className="p-3 bg-gray-50 rounded border text-xs text-gray-600">{projectInfo.note}</div>}
-                                <div className="flex flex-col gap-1 mt-2 text-xs text-gray-500">
-                                    {projectInfo.isIronBanding && <div>✓ 철밴딩 동표기</div>}
-                                    {projectInfo.isUnder1Ton && <div>✓ 1톤 미만 밴딩</div>}
-                                    {isNoDongMode && <div>✓ 단일 CP 모드</div>}
+                                <label className="text-xs font-bold text-gray-500">프로젝트 정보</label>
+                                <input className="w-full p-2 border rounded text-sm bg-gray-50 focus:bg-white transition" placeholder="업체명" value={projectInfo.company} onChange={e => handleTextChange(e, 'company')} />
+                                <input className="w-full p-2 border rounded text-sm bg-gray-50 focus:bg-white transition" placeholder="현장명" value={projectInfo.site} onChange={e => handleTextChange(e, 'site')} />
+                                <input className="w-full p-2 border rounded text-sm bg-gray-50 focus:bg-white transition" placeholder="기타사항 (메모)" value={projectInfo.note} onChange={e => handleTextChange(e, 'note')} />
+                                <div className="flex flex-col gap-1 mt-2">
+                                    <label className="flex items-center gap-2 text-xs cursor-pointer"><input type="checkbox" checked={projectInfo.isIronBanding} onChange={e => handleCheckChange(e, 'isIronBanding')} /> 철밴딩 동표기</label>
+                                    <label className="flex items-center gap-2 text-xs cursor-pointer"><input type="checkbox" checked={projectInfo.isUnder1Ton} onChange={e => handleCheckChange(e, 'isUnder1Ton')} /> 1톤 미만 밴딩</label>
+                                    <label className="flex items-center gap-2 text-xs cursor-pointer font-bold text-indigo-600"><input type="checkbox" checked={isNoDongMode} onChange={e => setIsNoDongMode(e.target.checked)} /> 동 표기 없음 (단일 CP)</label>
                                 </div>
                             </div>
                             <div className="space-y-1 mt-4">
-                                <button onClick={() => setViewMode('original')} className={`w-full text-left px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${viewMode === 'original' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}><ListTree size={16} /> 원본 견적 조회</button>
+                                <button onClick={() => setViewMode('original')} className={`w-full text-left px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${viewMode === 'original' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}><ListTree size={16} /> 원본 견적 관리 (엑셀)</button>
                                 <button onClick={() => setViewMode('manual')} className={`w-full text-left px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${viewMode === 'manual' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}><Edit3 size={16} /> CP 직접 편집</button>
-                                <button onClick={() => setViewMode('result')} className={`w-full text-left px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${viewMode === 'result' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}><FileDown size={16} /> 최종 보고서 (엑셀/차감)</button>
+                                <button onClick={() => setViewMode('result')} className={`w-full text-left px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${viewMode === 'result' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}><FileDown size={16} /> 최종 보고서 (저장/차감)</button>
                             </div>
                         </div>
                     </div>
+                );
+            });
 
+            if (!isLoaded) return <ImportView onImport={handleImportData} />;
+
+            return (
+                <div className="min-h-screen bg-gray-50 text-gray-900 font-sans flex">
+                    <Sidebar viewMode={viewMode} setViewMode={setViewMode} projectInfo={projectInfo} setProjectInfo={setProjectInfo} isNoDongMode={isNoDongMode} setIsNoDongMode={setIsNoDongMode} />
                     <div className="flex-1 ml-64 p-8 print:m-0 print:p-0">
-                        {viewMode === 'original' && (<OriginalDataView currentDong={currentDong} dongs={dongs} setCurrentDong={setCurrentDong} dongData={dongData} isNoDongMode={isNoDongMode} />)}
-                        {viewMode === 'manual' && (<ManualCPView currentDong={currentDong} dongs={dongs} setCurrentDong={setCurrentDong} manualData={manualData} setManualData={setManualData} projectInfo={projectInfo} onConvert={handleManualToResult} isNoDongMode={isNoDongMode} dongData={dongData} />)}
-                        {viewMode === 'result' && (<ResultView currentDong={currentDong} dongs={dongs} setCurrentDong={setCurrentDong} resultsByDong={resultsByDong} projectInfo={projectInfo} isNoDongMode={isNoDongMode} openExcelModal={() => setIsExcelModalOpen(true)} openStockModal={() => setIsStockModalOpen(true)} setViewMode={setViewMode} />)}
+                        {viewMode === 'original' && (<OriginalDataView currentDong={currentDong} dongs={dongs} setCurrentDong={setCurrentDong} addDong={addDong} deleteDong={deleteDong} renameDong={renameDong} data={getCurrentData()} updateCurrentData={updateCurrentData} handlePaste={handlePaste} isNoDongMode={isNoDongMode} />)}
+                        {viewMode === 'manual' && (<ManualCPView currentDong={currentDong} dongs={dongs} setCurrentDong={setCurrentDong} addDong={addDong} deleteDong={deleteDong} renameDong={renameDong} manualData={manualData} setManualData={setManualData} projectInfo={projectInfo} onConvert={handleManualToResult} isNoDongMode={isNoDongMode} dongData={dongData} />)}
+                        {viewMode === 'result' && (<ResultView currentDong={currentDong} dongs={dongs} setCurrentDong={setCurrentDong} addDong={addDong} deleteDong={deleteDong} renameDong={renameDong} resultsByDong={resultsByDong} projectInfo={projectInfo} isNoDongMode={isNoDongMode} openExcelModal={handleExcelExport} openStockModal={() => setIsStockModalOpen(true)} setViewMode={setViewMode} setManualData={setManualData} exportSelections={exportSelections} toggleSelection={toggleSelection} />)}
                     </div>
 
-                    <ExcelExportModal isOpen={isExcelModalOpen} onClose={() => setIsExcelModalOpen(false)} onConfirm={handleExcelExport} dongs={dongs} resultsByDong={resultsByDong} />
                     <StockDeductModal isOpen={isStockModalOpen} onClose={() => setIsStockModalOpen(false)} onConfirm={handleUpdateStock} dongs={dongs} isLoggedIn={isLoggedIn} handleLogin={handleLogin} />
                 </div>
             );
