@@ -94,6 +94,7 @@
         const FileCode = (props) => <IconWrapper {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><polyline points="10 13 8 15 10 17"/><polyline points="14 13 16 15 14 17"/></IconWrapper>;
         const Check = (props) => <IconWrapper {...props}><polyline points="20 6 9 17 4 12"></polyline></IconWrapper>;
         const X = (props) => <IconWrapper {...props}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></IconWrapper>;
+        const ListTree = (props) => <IconWrapper {...props}><path d="M21 12h-8"/><path d="M21 6H8"/><path d="M21 18h-8"/><path d="M12 12s-3-3-3-3v6s-3-3-3-3"/></IconWrapper>;
 
         const UNIT_WEIGHT_DATA = {
             "100-100-3.2": 9.52, "100-100-3.0": 8.96, "100-100-2.3": 6.95, "100-100-2.1": 6.37,
@@ -256,6 +257,61 @@
             </div>
         );
 
+        // --- App1에서 가져온 데이터를 원본 그대로 보여주는 컴포넌트 ---
+        const OriginalDataView = ({ currentDong, dongs, setCurrentDong, dongData, isNoDongMode }) => {
+            const data = dongData[currentDong];
+            
+            if (!data || !data.parsedItems || data.parsedItems.length === 0) {
+                return (
+                    <div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300 text-gray-400">
+                        <p>현재 동({currentDong})에 대한 원본 견적 데이터가 없습니다.</p>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="animate-fade-in pb-20 flex flex-col h-[calc(100vh-100px)]">
+                    <div className="flex justify-between items-center mb-4 print:hidden">
+                        <h2 className="text-lg font-bold text-gray-800">원본 견적 데이터 조회 (App 1) {isNoDongMode ? '' : `(${currentDong})`}</h2>
+                        <span className="text-xs text-gray-500">※ 이 화면은 App 1에서 복사된 초기 입력 데이터입니다. 수정은 불가능합니다.</span>
+                    </div>
+                    {!isNoDongMode && <DongTabs dongs={dongs} currentDong={currentDong} setCurrentDong={setCurrentDong} />}
+                    
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex-1 overflow-hidden flex flex-col">
+                        <div className="p-3 border-b bg-gray-50 flex gap-4">
+                            <div className="text-sm">기본 규격: <b>{data.spec}</b></div>
+                            <div className="text-sm">두께: <b>{data.thickness}T</b></div>
+                            <div className="text-sm ml-auto">총 파트 수: <b>{data.parsedItems.length}</b></div>
+                        </div>
+                        <div className="flex-1 overflow-auto custom-scrollbar p-4">
+                            <table className="w-full text-sm text-center border-collapse">
+                                <thead className="sticky top-0 bg-gray-100 shadow-sm">
+                                    <tr className="border-b">
+                                        <th className="p-2 border">#</th>
+                                        <th className="p-2 border">규격 (T/W/H)</th>
+                                        <th className="p-2 border">길이(mm)</th>
+                                        <th className="p-2 border">수량(개)</th>
+                                        <th className="p-2 border">마킹</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {data.parsedItems.map((item, i) => (
+                                        <tr key={i} className="border-b hover:bg-blue-50">
+                                            <td className="p-2 border text-gray-500">{i + 1}</td>
+                                            <td className="p-2 border">{item.t} / {item.w} / {item.h}</td>
+                                            <td className="p-2 border font-bold text-blue-700">{item.length}</td>
+                                            <td className="p-2 border font-bold">{item.qty}</td>
+                                            <td className="p-2 border text-left px-4">{item.marking}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         // --- Manual / Editor View (With Excel-like keyboard & select features) ---
         const ManualCPView = ({ currentDong, dongs, setCurrentDong, manualData, setManualData, projectInfo, onConvert, isNoDongMode, dongData }) => {
             const rows = manualData[currentDong] || [];
@@ -296,7 +352,6 @@
                 inputs.forEach((input, i) => {
                     if (i === currentIndex) return;
                     const r = input.getBoundingClientRect();
-                    // 같은 세로선상에 있는지 (X 좌표가 비슷한지)
                     if (Math.abs(r.left - rect.left) < 30) {
                         if (e.key === 'ArrowDown' && r.top >= rect.bottom - 5) {
                             const dist = r.top - rect.bottom;
@@ -323,10 +378,50 @@
             const removeStockRow = (rIdx) => { if (confirm('이 원본 행을 삭제하시겠습니까?')) { const newRows = rows.filter((_, i) => i !== rIdx); updateRows(newRows); } };
             const sortRowsByLength = () => { const newRows = [...rows].sort((a, b) => { if (a.t !== b.t) return parseFloat(b.t) - parseFloat(a.t); if (a.w !== b.w) return parseFloat(b.w) - parseFloat(a.w); if (a.h !== b.h) return parseFloat(b.h) - parseFloat(a.h); return b.l - a.l; }); updateRows(newRows); };
             
+            // App1에서 넘어온 견적서 원본 데이터(dongData)를 파싱
             const parsedItems = dongData[currentDong]?.parsedItems || [];
             
-            const requiredItems = useMemo(() => { const grouped = {}; (parsedItems || []).forEach(item => { const itemMarking = item.marking ? String(item.marking).trim() : ''; const key = `${item.t}|${item.w}|${item.h}|${item.length}|${itemMarking}`; if (!grouped[key]) grouped[key] = { ...item, marking: itemMarking, required: 0, used: 0 }; grouped[key].required += item.qty; }); return Object.values(grouped).sort((a, b) => b.length - a.length); }, [parsedItems]);
-            const remainingItems = useMemo(() => { const status = JSON.parse(JSON.stringify(requiredItems)); (rows || []).forEach(row => { if (Array.isArray(row.cuts)) { row.cuts.forEach(cut => { if (cut.l && cut.count) { const cutLen = parseFloat(cut.l); const totalCutCount = parseInt(cut.count) * parseInt(row.qty || 0); const cutMarking = cut.marking ? String(cut.marking).trim() : ''; const match = status.find(item => Math.abs(item.length - cutLen) < 0.1 && (item.marking || '') === cutMarking && item.t == row.t && item.w == row.w && item.h == row.h); if (match) { match.used += totalCutCount; } } }); } }); return status; }, [requiredItems, rows]);
+            // 필요 물량 (원본)
+            const requiredItems = useMemo(() => { 
+                const grouped = {}; 
+                (parsedItems || []).forEach(item => { 
+                    const itemMarking = item.marking ? String(item.marking).trim() : ''; 
+                    // 두께, 넓이, 높이, 길이, 마킹이 같으면 같은 항목으로 묶음
+                    const key = `${item.t}|${item.w}|${item.h}|${item.length}|${itemMarking}`; 
+                    if (!grouped[key]) grouped[key] = { ...item, marking: itemMarking, required: 0, used: 0 }; 
+                    grouped[key].required += item.qty; 
+                }); 
+                return Object.values(grouped).sort((a, b) => b.length - a.length); 
+            }, [parsedItems]);
+
+            // 남은 물량 (실시간 연동)
+            const remainingItems = useMemo(() => { 
+                const status = JSON.parse(JSON.stringify(requiredItems)); 
+                (rows || []).forEach(row => { 
+                    if (Array.isArray(row.cuts)) { 
+                        row.cuts.forEach(cut => { 
+                            if (cut.l && cut.count) { 
+                                const cutLen = parseFloat(cut.l); 
+                                const totalCutCount = parseInt(cut.count) * parseInt(row.qty || 0); 
+                                const cutMarking = cut.marking ? String(cut.marking).trim() : ''; 
+                                
+                                // 현재 입력한 값과 견적서의 값이 정확히 일치하는지 확인 (두께, 넓이, 높이, 길이, 마킹)
+                                const match = status.find(item => 
+                                    Math.abs(item.length - cutLen) < 0.1 && 
+                                    (item.marking || '') === cutMarking && 
+                                    item.t == row.t && 
+                                    item.w == row.w && 
+                                    item.h == row.h
+                                ); 
+                                if (match) { 
+                                    match.used += totalCutCount; 
+                                } 
+                            } 
+                        }); 
+                    } 
+                }); 
+                return status; 
+            }, [requiredItems, rows]);
 
             // Clear selected cells if tab changes to avoid mismatched keys
             useEffect(() => { setSelectedCells(new Map()); }, [currentDong]);
@@ -400,7 +495,7 @@
                         </div>
                     </div>
                     
-                    {/* 우측 패널 (다중 셀 선택 가능) */}
+                    {/* 우측 패널 (다중 셀 선택 가능 및 견적 연동) */}
                     <div className="w-80 flex flex-col gap-4 relative">
                         <div className="text-xs text-right text-gray-500 pb-1">💡 <b>Ctrl + 클릭</b>으로 다중 수량 선택 및 합산</div>
                         <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
@@ -409,6 +504,9 @@
                                 <table className="w-full text-xs text-center border-collapse">
                                     <thead className="sticky top-0 bg-white shadow-sm"><tr className="bg-gray-100 border-b"><th className="p-1">규격(T/W/H)</th><th className="p-1">길이</th><th className="p-1">수량</th><th className="p-1">마킹</th></tr></thead>
                                     <tbody>
+                                        {requiredItems.length === 0 && (
+                                            <tr><td colSpan="4" className="py-4 text-gray-400">데이터 없음</td></tr>
+                                        )}
                                         {requiredItems.map((item, i) => {
                                             const id = `req-${i}`;
                                             const isSelected = selectedCells.has(id);
@@ -431,6 +529,9 @@
                                 <table className="w-full text-xs text-center border-collapse">
                                     <thead className="sticky top-0 bg-white shadow-sm"><tr className="bg-indigo-50 border-b border-indigo-200"><th className="p-1">규격</th><th className="p-1">길이</th><th className="p-1">잔여</th><th className="p-1">마킹</th></tr></thead>
                                     <tbody>
+                                        {remainingItems.length === 0 && (
+                                            <tr><td colSpan="4" className="py-4 text-gray-400">데이터 없음</td></tr>
+                                        )}
                                         {remainingItems.map((item, i) => { 
                                             const remaining = item.required - item.used; 
                                             const isDone = remaining <= 0; 
@@ -867,6 +968,7 @@
                                 </div>
                             </div>
                             <div className="space-y-1 mt-4">
+                                <button onClick={() => setViewMode('original')} className={`w-full text-left px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${viewMode === 'original' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}><ListTree size={16} /> 원본 견적 조회</button>
                                 <button onClick={() => setViewMode('manual')} className={`w-full text-left px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${viewMode === 'manual' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}><Edit3 size={16} /> CP 직접 편집</button>
                                 <button onClick={() => setViewMode('result')} className={`w-full text-left px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${viewMode === 'result' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}><FileDown size={16} /> 최종 보고서 (엑셀/차감)</button>
                             </div>
@@ -874,6 +976,7 @@
                     </div>
 
                     <div className="flex-1 ml-64 p-8 print:m-0 print:p-0">
+                        {viewMode === 'original' && (<OriginalDataView currentDong={currentDong} dongs={dongs} setCurrentDong={setCurrentDong} dongData={dongData} isNoDongMode={isNoDongMode} />)}
                         {viewMode === 'manual' && (<ManualCPView currentDong={currentDong} dongs={dongs} setCurrentDong={setCurrentDong} manualData={manualData} setManualData={setManualData} projectInfo={projectInfo} onConvert={handleManualToResult} isNoDongMode={isNoDongMode} dongData={dongData} />)}
                         {viewMode === 'result' && (<ResultView currentDong={currentDong} dongs={dongs} setCurrentDong={setCurrentDong} resultsByDong={resultsByDong} projectInfo={projectInfo} isNoDongMode={isNoDongMode} openExcelModal={() => setIsExcelModalOpen(true)} openStockModal={() => setIsStockModalOpen(true)} setViewMode={setViewMode} />)}
                     </div>
