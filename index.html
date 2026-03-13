@@ -170,58 +170,6 @@
             return items;
         };
 
-        const StockDeductModal = ({ isOpen, onClose, onConfirm, dongs, isLoggedIn, handleLogin }) => {
-            if (!isOpen) return null;
-            // 차감은 중복 차감을 막기 위해 동별로 하나의 버전만 선택하도록 Radio(select) 유지
-            const [dongModes, setDongModes] = useState(() => dongs.reduce((acc, d) => ({...acc, [d]: 'manual_result'}), {})); // App2 기본은 수동
-
-            return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-                    <div className="bg-white rounded-xl shadow-2xl p-6 w-[420px] modal-fade-in relative">
-                        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X size={20} /></button>
-                        <h3 className="text-xl font-bold mb-6 flex items-center gap-2"><Cloud className="text-red-500" /> 재고 차감 (구글 시트 연동)</h3>
-                        
-                        {!isLoggedIn ? (
-                            <div className="text-center py-6">
-                                <p className="text-sm text-gray-500 mb-4">재고를 차감하려면 구글 로그인이 필요합니다.</p>
-                                <button onClick={handleLogin} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 transition">구글 로그인</button>
-                            </div>
-                        ) : (
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">동별 차감 기준 선택</label>
-                                    <p className="text-[10px] text-gray-500 mb-2">※ 중복 차감을 방지하기 위해 각 동마다 하나의 기준만 선택할 수 있습니다.</p>
-                                    <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg bg-gray-50 p-2 space-y-2 custom-scrollbar">
-                                        {dongs.map(dName => (
-                                            <div key={dName} className="flex justify-between items-center text-sm bg-white p-2 rounded shadow-sm">
-                                                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                                                    <input type="checkbox" className="w-4 h-4 text-red-500" 
-                                                        checked={!!dongModes[dName]} 
-                                                        onChange={(e) => setDongModes(prev => ({...prev, [dName]: e.target.checked ? 'manual_result' : null}))} 
-                                                    />
-                                                    <span className="font-bold text-gray-700">{dName}</span>
-                                                </label>
-                                                <select className="border-gray-300 rounded text-xs font-bold p-1 bg-gray-50 focus:ring-2 focus:ring-blue-400 outline-none"
-                                                    value={dongModes[dName] || 'manual_result'}
-                                                    disabled={!dongModes[dName]}
-                                                    onChange={(e) => setDongModes(prev => ({...prev, [dName]: e.target.value}))}
-                                                >
-                                                    <option value="min_rows">작업 편의</option>
-                                                    <option value="min_loss">LOSS 최소화</option>
-                                                    <option value="manual_result">수동 편집 결과</option>
-                                                </select>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                                <button onClick={() => onConfirm(dongModes)} className="w-full mt-8 bg-red-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-red-700 transition flex justify-center items-center gap-2"><Cloud size={18} /> 재고 차감 실행</button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            );
-        };
-
         const DongTabs = ({ dongs, currentDong, setCurrentDong, addDong, deleteDong, renameDong }) => (
             <div className="flex gap-2 mb-4 overflow-x-auto pb-2 border-b items-center print:hidden">
                 {dongs.map(dong => (
@@ -1205,9 +1153,23 @@
                 try {
                     const headerRange = 'Sheet1!H4:AK4'; const headerRes = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: headerRange });
                     const headers = headerRes.result.values ? headerRes.result.values[0] : [];
-                    let emptyColIndex = headers.length; 
-                    if(emptyColIndex >= 30) { alert("더 이상 기록할 빈 열이 없습니다 (AK열 초과)."); return; }
-                    const targetColNum = 8 + emptyColIndex; const targetColLetter = getColumnLetter(targetColNum);
+                    
+                    // 빈 열 찾기 로직 수정: L열(인덱스 11)부터 AK열(인덱스 36)까지 순회하며 빈 곳 찾기
+                    let targetColIndex = -1;
+                    for (let i = 11; i <= 36; i++) {
+                        if (!headers[i] || headers[i].trim() === '') {
+                            targetColIndex = i;
+                            break;
+                        }
+                    }
+
+                    if (targetColIndex === -1) {
+                        alert("더 이상 기록할 빈 열이 없습니다 (AK열 초과). L~AK열을 비워주세요.");
+                        return;
+                    }
+
+                    const targetColNum = targetColIndex + 1; // 1-based index for getColumnLetter
+                    const targetColLetter = getColumnLetter(targetColNum);
 
                     const updateData = []; const companyName = `${projectInfo.company || '업체미상'}(${projectInfo.site || '현장미상'})`;
                     updateData.push({ range: `Sheet1!${targetColLetter}4`, values: [[companyName]] });
@@ -1220,7 +1182,7 @@
                     if(updateData.length === 1) { alert("차감할 재고 사용량이 없습니다."); return; }
                     await gapi.client.sheets.spreadsheets.values.batchUpdate({ spreadsheetId: SPREADSHEET_ID, resource: { data: updateData, valueInputOption: 'USER_ENTERED' } });
                     alert(`재고 차감이 완료되었습니다.\n기록된 열: ${targetColLetter}`); setIsStockModalOpen(false);
-                } catch (error) { console.error(error); alert("재고 차감 중 오류가 발생했습니다."); }
+                } catch (error) { console.error(error); alert("재고 차감 중 오류가 발생했습니다. 구글 계정 권한을 확인하세요."); }
             };
 
             const Sidebar = memo(({ viewMode, setViewMode, projectInfo, setProjectInfo, isNoDongMode, setIsNoDongMode }) => {
