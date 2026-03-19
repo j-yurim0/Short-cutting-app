@@ -170,30 +170,15 @@
             return items;
         };
 
-        const DongTabs = ({ dongs, currentDong, setCurrentDong, addDong, deleteDong, renameDong }) => (
-            <div className="flex gap-2 mb-4 overflow-x-auto pb-2 border-b items-center print:hidden">
-                {dongs.map(dong => (
-                    <div key={dong} className="relative group">
-                        <button onDoubleClick={() => renameDong(dong)} onClick={() => setCurrentDong(dong)} className={`px-4 py-2 rounded-t-lg font-bold text-sm whitespace-nowrap transition pr-8 ${currentDong === dong ? 'bg-white border-x border-t border-gray-200 text-blue-600 relative top-[1px]' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-                            <span className="flex items-center gap-2"><Building size={14} /> {dong}</span>
-                        </button>
-                        <div className={`absolute right-1 top-1/2 -translate-y-1/2 flex gap-1 ${currentDong === dong ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition`}>
-                            <button onClick={(e) => { e.stopPropagation(); deleteDong(dong); }} className="p-0.5 text-gray-400 hover:text-red-500 rounded"><Trash2 size={10} /></button>
-                        </div>
-                    </div>
-                ))}
-                <button onClick={addDong} className="px-3 py-2 text-gray-400 hover:text-blue-600 font-bold text-sm bg-gray-50 rounded hover:bg-blue-50 transition"><Plus size={16} /></button>
-            </div>
-        );
-
         const StockDeductModal = ({ isOpen, onClose, onConfirm, dongs, isLoggedIn, handleLogin }) => {
             if (!isOpen) return null;
-            const [dongModes, setDongModes] = useState(() => dongs.reduce((acc, d) => ({...acc, [d]: 'manual_result'}), {}));
+            // 차감은 중복 차감을 막기 위해 동별로 하나의 버전만 선택하도록 Radio(select) 유지
+            const [dongModes, setDongModes] = useState(() => dongs.reduce((acc, d) => ({...acc, [d]: 'manual_result'}), {})); // App2 기본은 수동
 
             return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
                     <div className="bg-white rounded-xl shadow-2xl p-6 w-[420px] modal-fade-in relative">
-                        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X size={20} /></button>
+                        <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-600"><X size={20} /></button>
                         <h3 className="text-xl font-bold mb-6 flex items-center gap-2"><Cloud className="text-red-500" /> 재고 차감 (구글 시트 연동)</h3>
                         
                         {!isLoggedIn ? (
@@ -216,7 +201,7 @@
                                                     />
                                                     <span className="font-bold text-gray-700">{dName}</span>
                                                 </label>
-                                                <select className="border-gray-300 rounded text-xs font-bold p-1 bg-gray-50 focus:ring-2 focus:ring-blue-400 outline-none"
+                                                <select className="border-gray-300 rounded text-xs font-bold p-1 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
                                                     value={dongModes[dName] || 'manual_result'}
                                                     disabled={!dongModes[dName]}
                                                     onChange={(e) => setDongModes(prev => ({...prev, [dName]: e.target.value}))}
@@ -236,6 +221,22 @@
                 </div>
             );
         };
+
+        const DongTabs = ({ dongs, currentDong, setCurrentDong, addDong, deleteDong, renameDong }) => (
+            <div className="flex gap-2 mb-4 overflow-x-auto pb-2 border-b items-center print:hidden">
+                {dongs.map(dong => (
+                    <div key={dong} className="relative group">
+                        <button onDoubleClick={() => renameDong(dong)} onClick={() => setCurrentDong(dong)} className={`px-4 py-2 rounded-t-lg font-bold text-sm whitespace-nowrap transition pr-8 ${currentDong === dong ? 'bg-white border-x border-t border-gray-200 text-blue-600 relative top-[1px]' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                            <span className="flex items-center gap-2"><Building size={14} /> {dong}</span>
+                        </button>
+                        <div className={`absolute right-1 top-1/2 -translate-y-1/2 flex gap-1 ${currentDong === dong ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition`}>
+                            <button onClick={(e) => { e.stopPropagation(); deleteDong(dong); }} className="p-0.5 text-gray-500 hover:text-red-500 rounded"><Trash2 size={10} /></button>
+                        </div>
+                    </div>
+                ))}
+                <button onClick={addDong} className="px-3 py-2 text-gray-500 hover:text-blue-600 font-bold text-sm bg-gray-50 rounded hover:bg-blue-50 transition"><Plus size={16} /></button>
+            </div>
+        );
 
         // --- App 2: Original Data View (Grid) ---
         const OriginalDataView = ({ currentDong, dongs, setCurrentDong, data, updateCurrentData, handlePaste, isNoDongMode, addDong, deleteDong, renameDong }) => {
@@ -294,7 +295,7 @@
                             {(!data.gridData || data.gridData.length === 0) ? (
                                 <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
                                     <textarea className="absolute inset-0 opacity-0 cursor-text" onPaste={handlePaste} autoFocus />
-                                    <div className="text-center text-gray-400 pointer-events-none">
+                                    <div className="text-center text-gray-500 pointer-events-none">
                                         <div className="bg-indigo-100 text-indigo-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"><FileSpreadsheet size={32}/></div>
                                         <p className="text-2xl font-bold mb-2">Ctrl + V</p>
                                         <p className="text-sm">엑셀 표를 복사하여 이곳에 붙여넣으세요</p>
@@ -307,7 +308,7 @@
                                             <th className="p-1 border bg-gray-100 w-8 text-center text-gray-500">#</th>
                                             {(data.gridData[0] || []).map((_, cIdx) => (
                                                 <th key={cIdx} className="p-1 border min-w-[80px]">
-                                                    <select className={`w-full p-1 border rounded text-xs font-bold outline-none cursor-pointer ${['length', 'qty'].includes(data.colMapping?.[cIdx]) ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : ['width', 'height', 'thickness'].includes(data.colMapping?.[cIdx]) ? 'bg-green-100 text-green-700 border-green-200' : 'bg-white text-gray-400'}`} 
+                                                    <select className={`w-full p-1 border rounded text-xs font-bold outline-none cursor-pointer ${['length', 'qty'].includes(data.colMapping?.[cIdx]) ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : ['width', 'height', 'thickness'].includes(data.colMapping?.[cIdx]) ? 'bg-green-100 text-green-700 border-green-200' : 'bg-white text-gray-500'}`} 
                                                         value={data.colMapping?.[cIdx] || ''} 
                                                         onChange={e => updateCurrentData({ colMapping: { ...(data.colMapping || {}), [cIdx]: e.target.value } })}>
                                                         <option value="">- 열 무시 -</option>
@@ -325,7 +326,7 @@
                                     <tbody className="bg-white">
                                         {data.gridData.map((row, rIdx) => (
                                             <tr key={rIdx} className="hover:bg-indigo-50 transition-colors">
-                                                <td className="p-1 border text-center text-gray-400 bg-gray-50">{rIdx + 1}</td>
+                                                <td className="p-1 border text-center text-gray-500 bg-gray-50">{rIdx + 1}</td>
                                                 {row.map((cell, cIdx) => (
                                                     <td key={cIdx} className="border p-0 relative">
                                                         <input className="w-full h-full p-2 text-xs border-none focus:ring-2 focus:ring-indigo-500 focus:z-10 outline-none bg-transparent" 
@@ -607,7 +608,7 @@
                                                         return (
                                                             <tr key={cIdx} className="border-b border-gray-200 hover:bg-gray-50 h-8">
                                                                 {isFirst && (<>
-                                                                    <td rowSpan={rowSpan} className={`border font-bold relative group ${isHighlightCondition ? 'bg-purple-200 text-purple-900 border-purple-400' : 'bg-yellow-50'}`}>{rIdx + 1}<button onClick={() => removeStockRow(rIdx)} className="absolute left-0 top-0 text-red-400 opacity-0 group-hover:opacity-100 p-0.5"><Trash2 size={10} /></button></td>
+                                                                    <td rowSpan={rowSpan} className={`border font-bold relative group ${isHighlightCondition ? 'bg-purple-200 text-purple-900 border-purple-500' : 'bg-yellow-50'}`}>{rIdx + 1}<button onClick={() => removeStockRow(rIdx)} className="absolute left-0 top-0 text-red-500 opacity-0 group-hover:opacity-100 p-0.5"><Trash2 size={10} /></button></td>
                                                                     <td rowSpan={rowSpan} className="border bg-yellow-50 p-0"><input className="input-cell bg-yellow-50" value={row.t} onChange={e => handleStockChange(rIdx, 't', e.target.value)} data-ridx={rIdx} data-col="t" /></td>
                                                                     <td rowSpan={rowSpan} className="border bg-yellow-50 p-0"><input className="input-cell bg-yellow-50" value={row.w} onChange={e => handleStockChange(rIdx, 'w', e.target.value)} data-ridx={rIdx} data-col="w" /></td>
                                                                     <td rowSpan={rowSpan} className="border bg-yellow-50 p-0"><input className="input-cell bg-yellow-50" value={row.h} onChange={e => handleStockChange(rIdx, 'h', e.target.value)} data-ridx={rIdx} data-col="h" /></td>
@@ -620,14 +621,14 @@
                                                                 <td className={`border p-0 ${cut.isYellow ? 'bg-yellow-100' : ''}`}>
                                                                     <div className="flex items-center h-full w-full">
                                                                         <input type="text" className="input-cell text-left px-1 flex-1" value={cut.marking} onChange={e => handleCutChange(rIdx, cuts.indexOf(cut), 'marking', e.target.value)} data-ridx={rIdx} data-cidx={cIdx} data-col="cut_marking" />
-                                                                        <label className="flex items-center gap-1 pr-1 text-[10px] text-gray-400 cursor-pointer whitespace-nowrap select-none hover:text-gray-600">
+                                                                        <label className="flex items-center gap-1 pr-1 text-[10px] text-gray-500 cursor-pointer whitespace-nowrap select-none hover:text-gray-600">
                                                                             <input type="checkbox" checked={cut.isYellow || false} onChange={e => handleCutChange(rIdx, cuts.indexOf(cut), 'isYellow', e.target.checked)} />
                                                                             배경
                                                                         </label>
                                                                     </div>
                                                                 </td>
                                                                 {isFirst && (<>
-                                                                    <td rowSpan={rowSpan} className={`border font-bold ${lossPerBar >= 400 ? 'text-red-600 bg-[#FFCCBC]' : (lossPerBar < 100 ? 'text-red-500' : 'text-gray-700')}`}>{lossPerBar.toLocaleString()}</td>
+                                                                    <td rowSpan={rowSpan} className={`border font-bold ${lossPerBar >= 500 ? 'text-red-600 bg-[#FFCCBC]' : (lossPerBar < 100 ? 'text-red-500' : 'text-gray-700')}`}>{lossPerBar.toLocaleString()}</td>
                                                                     <td rowSpan={rowSpan} className="border text-gray-600">{totalRowLoss.toLocaleString()}</td>
                                                                     <td rowSpan={rowSpan} className="border p-0"><input className="input-cell text-left px-1" value={row.remark || ''} onChange={e => handleStockChange(rIdx, 'remark', e.target.value)} placeholder="비고 입력" data-ridx={rIdx} data-col="remark" /></td>
                                                                 </>)}
@@ -641,7 +642,7 @@
                                     </tbody>
                                 </table>
                             )}
-                            <button onClick={addStockRow} className="w-full mt-4 py-3 border-2 border-dashed border-indigo-300 rounded-lg text-indigo-400 hover:border-indigo-500 hover:text-indigo-600 font-bold transition">+ 수동 원본 추가</button>
+                            <button onClick={addStockRow} className="w-full mt-4 py-3 border-2 border-dashed border-indigo-300 rounded-lg text-indigo-500 hover:border-indigo-500 hover:text-indigo-600 font-bold transition">+ 수동 원본 추가</button>
                         </div>
                     </div>
                     
@@ -660,7 +661,7 @@
                                     <thead className="sticky top-0 bg-white shadow-sm z-10"><tr className="bg-gray-100 border-b"><th className="p-1">규격(T/W/H)</th><th className="p-1">길이</th><th className="p-1">수량</th><th className="p-1">마킹</th></tr></thead>
                                     <tbody>
                                         {requiredItems.length === 0 && (
-                                            <tr><td colSpan="4" className="py-4 text-gray-400">데이터 없음</td></tr>
+                                            <tr><td colSpan="4" className="py-4 text-gray-500">데이터 없음</td></tr>
                                         )}
                                         {requiredItems.map((item, i) => {
                                             const id = `req-${i}`;
@@ -705,7 +706,7 @@
                                     <thead className="sticky top-0 bg-white shadow-sm z-10"><tr className="bg-indigo-50 border-b border-indigo-200"><th className="p-1">규격</th><th className="p-1">길이</th><th className="p-1">잔여</th><th className="p-1">마킹</th></tr></thead>
                                     <tbody>
                                         {remainingItems.length === 0 && (
-                                            <tr><td colSpan="4" className="py-4 text-gray-400">데이터 없음</td></tr>
+                                            <tr><td colSpan="4" className="py-4 text-gray-500">데이터 없음</td></tr>
                                         )}
                                         {remainingItems.map((item, i) => { 
                                             const remaining = item.isUnmatched ? item.used : item.required - item.used; 
@@ -717,7 +718,7 @@
                                             
                                             return (
                                                 <tr key={i} 
-                                                    className={`border-b ${item.isUnmatched ? 'bg-red-50 hover:bg-red-100 cursor-pointer' : (isDone ? 'bg-gray-100 text-gray-400' : 'hover:bg-indigo-50 cursor-pointer')} ${isSelected ? 'bg-blue-100' : ''}`} 
+                                                    className={`border-b ${item.isUnmatched ? 'bg-red-50 hover:bg-red-100 cursor-pointer' : (isDone ? 'bg-gray-100 text-gray-500' : 'hover:bg-indigo-50 cursor-pointer')} ${isSelected ? 'bg-blue-100' : ''}`} 
                                                     onMouseDown={(e) => !isDone && handleMouseDown(e, id, lengthSum)}
                                                     onMouseEnter={() => !isDone && handleMouseEnter(id, lengthSum)}
                                                 >
@@ -755,9 +756,9 @@
                             <div className="h-6 w-px bg-gray-600"></div>
                             <div className="flex flex-col text-right">
                                 <span className="text-xs text-gray-300">총 길이 합계 (1본 기준)</span>
-                                <span className="text-lg font-bold text-green-400">{selectedSum.toLocaleString()} <span className="text-sm">mm</span></span>
+                                <span className="text-lg font-bold text-green-500">{selectedSum.toLocaleString()} <span className="text-sm">mm</span></span>
                             </div>
-                            <button onClick={() => setSelectedCells(new Map())} className="ml-2 text-gray-400 hover:text-white"><X size={16}/></button>
+                            <button onClick={() => setSelectedCells(new Map())} className="ml-2 text-gray-500 hover:text-white"><X size={16}/></button>
                         </div>
                     )}
                 </div>
@@ -843,7 +844,7 @@
                     
                     {!isNoDongMode && <DongTabs dongs={dongs} currentDong={currentDong} setCurrentDong={setCurrentDong} addDong={addDong} deleteDong={deleteDong} renameDong={renameDong} />}
                     
-                    {(!allResults || !results) ? (<div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300 text-gray-400"><p>현재 탭에 표시할 결과가 없습니다.</p></div>) : (
+                    {(!allResults || !results) ? (<div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300 text-gray-500"><p>현재 탭에 표시할 결과가 없습니다.</p></div>) : (
                         <div>
                             <div className="flex mb-4 border-b print:hidden gap-2 items-center justify-between">
                                 <div className="flex gap-2">
@@ -908,7 +909,7 @@
                                                             <tr key={`${gIdx}-${pIdx}`} className={`${rowClass} border-b border-gray-200 hover:bg-gray-50 transition print:bg-transparent`}>
                                                                 {pIdx === 0 && (
                                                                     <>
-                                                                        <td rowSpan={sortedParts.length} className={`border-x border-gray-200 font-bold print:bg-transparent ${isHighlightCondition ? 'bg-purple-200 text-purple-900 border-purple-400' : 'bg-gray-50'}`}>{overallSeq++}</td>
+                                                                        <td rowSpan={sortedParts.length} className={`border-x border-gray-200 font-bold print:bg-transparent ${isHighlightCondition ? 'bg-purple-200 text-purple-900 border-purple-500' : 'bg-gray-50'}`}>{overallSeq++}</td>
                                                                         <td rowSpan={sortedParts.length} className="border-x border-gray-200">{t}</td>
                                                                         <td rowSpan={sortedParts.length} className="border-x border-gray-200">{w}</td>
                                                                         <td rowSpan={sortedParts.length} className="border-x border-gray-200">{h}</td>
@@ -922,7 +923,7 @@
                                                                 <td className={`border-x border-gray-200 text-left px-2 truncate max-w-[150px] ${part.isYellow ? 'bg-yellow-100' : ''}`}>{part.marking}</td>
                                                                 {pIdx === 0 && (
                                                                     <>
-                                                                        <td rowSpan={sortedParts.length} className={`border-x border-gray-200 font-bold ${group.remainder >= 400 ? 'bg-[#FFCCBC] text-red-600' : ''}`}>{Number(group.remainder).toLocaleString()}</td>
+                                                                        <td rowSpan={sortedParts.length} className={`border-x border-gray-200 font-bold ${group.remainder >= 500 ? 'bg-[#FFCCBC] text-red-600' : ''}`}>{Number(group.remainder).toLocaleString()}</td>
                                                                         <td rowSpan={sortedParts.length} className="border-x border-gray-200 text-gray-500">{(Number(group.remainder) * Number(group.qty)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
                                                                         <td rowSpan={sortedParts.length} className="border-x border-gray-200 text-gray-600 text-left px-1">{group.remark || ''}</td>
                                                                     </>
@@ -977,7 +978,7 @@
                         <p className="text-sm text-gray-500 mb-6">App 1 (플래너)에서 복사한 소스 코드를 아래에 붙여넣으세요.</p>
                         
                         <textarea 
-                            className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none text-xs text-gray-400 bg-gray-50 font-mono"
+                            className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none resize-none text-xs text-gray-500 bg-gray-50 font-mono"
                             placeholder="SMARTCP-v2-..."
                             value={code}
                             onChange={(e) => setCode(e.target.value)}
@@ -1010,6 +1011,7 @@
             const [manualData, setManualData] = useState({});
 
             const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
+            const [isStockModalOpen, setIsStockModalOpen] = useState(false);
             
             // 엑셀 저장을 위한 버전 선택 상태 관리 (기본적으로 모두 체크 해제된 상태로 초기화)
             const [exportSelections, setExportSelections] = useState({});
@@ -1146,7 +1148,7 @@
                 sortedPlan.forEach(group => { grandTotalStockQty += Number(group.qty || 0); grandTotalLoss += (Number(group.remainder || 0) * Number(group.qty || 0)); const summaryKey = `${t}|${w}|${h}|${group.stockLength}`; if (!stockSummary[summaryKey]) stockSummary[summaryKey] = 0; stockSummary[summaryKey] += Number(group.qty || 0); const inL = Number(group.stockLength || 0) * Number(group.qty || 0); statsMap[statKey].inputLen += inL; statsMap[statKey].inputWt += (inL / 1000 * unitWeight); const groupStartRow = currentRow; const sortedParts = [...(group.parts || [])].sort((a, b) => parseFloat(a.length || 0) - parseFloat(b.length || 0)); const rowHeight = Math.max(1, sortedParts.length); const groupColor = { type: 'pattern', pattern: 'solid', fgColor: { argb: specColorMap[specKey] } }; 
                 sortedParts.forEach((part, pIdx) => { grandTotalCutQty += Number(part.totalQty || 0); const outL = Number(part.length || 0) * Number(part.totalQty || 0); statsMap[statKey].prodLen += outL; statsMap[statKey].prodWt += (outL / 1000 * unitWeight); const partKey = `${t}|${w}|${h}|${part.length}|${part.marking}`; if (cutPartMap.has(partKey)) { cutPartMap.get(partKey).qty += Number(part.totalQty || 0); } else { cutPartMap.set(partKey, { t, w, h, length: part.length, qty: Number(part.totalQty || 0), marking: part.marking, specKey }); } const row = worksheet.getRow(currentRow); if (pIdx === 0) { row.getCell(1).value = seq++; row.getCell(2).value = t; row.getCell(3).value = w; row.getCell(4).value = h; row.getCell(5).value = Number(group.stockLength); row.getCell(6).value = Math.floor(group.qty); } row.getCell(7).value = Number(part.length); row.getCell(8).value = (part.totalQty / group.qty); row.getCell(9).value = Math.floor(part.totalQty); row.getCell(10).value = part.marking; if (pIdx === 0) { row.getCell(11).value = Number(group.remainder); row.getCell(12).value = Number(group.remainder) * Number(group.qty); row.getCell(13).value = group.remark || ''; } for (let c = 1; c <= 13; c++) { const cell = row.getCell(c); cell.border = borderAll; cell.alignment = alignCenter; cell.font = fontNormal; if (c <= 5) { cell.fill = groupColor; } else if (c === 6 || c === 9) { cell.fill = fillLightGray; } else { cell.fill = fillWhite; } if ([5, 6, 9, 11, 12].includes(c)) cell.numFmt = '#,##0'; } 
                 if (part.isYellow) { for (let c = 7; c <= 10; c++) { row.getCell(c).fill = fillYellow; } }
-                row.getCell(5).font = fontBold; row.getCell(7).font = fontBold; row.getCell(9).font = fontBold; if (pIdx === 0 && Number(group.remainder) >= 400) { const lossCell = row.getCell(11); lossCell.fill = fillRed; lossCell.font = fontRedBold; } currentRow++; }); 
+                row.getCell(5).font = fontBold; row.getCell(7).font = fontBold; row.getCell(9).font = fontBold; if (pIdx === 0 && Number(group.remainder) >= 500) { const lossCell = row.getCell(11); lossCell.fill = fillRed; lossCell.font = fontRedBold; } currentRow++; }); 
                 if (rowHeight > 1) { const endRow = groupStartRow + rowHeight - 1; [1, 2, 3, 4, 5, 6, 11, 12, 13].forEach(c => worksheet.mergeCells(groupStartRow, c, endRow, c)); } const lastRowOfGroup = worksheet.getRow(currentRow - 1); for (let c = 1; c <= 13; c++) lastRowOfGroup.getCell(c).border = { ...borderAll, bottom: { style: 'medium' } }; }); }); 
                 const totalRow = worksheet.getRow(currentRow); totalRow.getCell(1).value = '합 계'; worksheet.mergeCells(currentRow, 1, currentRow, 5); totalRow.getCell(6).value = Math.floor(grandTotalStockQty); totalRow.getCell(7).value = '합 계'; worksheet.mergeCells(currentRow, 7, currentRow, 8); totalRow.getCell(9).value = Math.floor(grandTotalCutQty); totalRow.getCell(12).value = grandTotalLoss; for (let c = 1; c <= 13; c++) { const cell = totalRow.getCell(c); cell.fill = fillTotal; cell.font = fontBold; cell.border = borderAll; cell.alignment = alignCenter; if ([6, 9, 12].includes(c)) cell.numFmt = '#,##0'; } const mainTableEndRow = currentRow; currentRow += 4; 
                 const statsStartRow = 5; const statsColStart = 17; const statsTitleRow = worksheet.getRow(statsStartRow); statsTitleRow.getCell(statsColStart).value = '중량 및 길이 집계표'; worksheet.mergeCells(statsStartRow, statsColStart, statsStartRow, statsColStart + 5); statsTitleRow.getCell(statsColStart).style = { font: fontBold, fill: fillHeader, alignment: alignCenter, border: borderAll }; const statsHeaderRow = worksheet.getRow(statsStartRow + 1); ['규격', '투입 길이(m)', '생산 길이(m)', '투입 중량(kg)', '생산 중량(kg)', 'LOSS 중량(kg)'].forEach((h, i) => { const cell = statsHeaderRow.getCell(statsColStart + i); cell.value = h; cell.style = { font: fontBold, fill: fillHeader, alignment: alignCenter, border: borderAll }; }); let grandInLen = 0, grandProdLen = 0, grandInWt = 0, grandProdWt = 0; let statsRowIdx = statsStartRow + 2; const sortedStatKeys = Object.keys(statsMap).sort((a, b) => { const [t1, w1, h1] = a.split('|').map(Number); const [t2, w2, h2] = b.split('|').map(Number); if (w1 !== w2) return w2 - w1; if (h1 !== h2) return h2 - h1; return t1 - t2; }); 
@@ -1242,7 +1244,7 @@
                     if(updateData.length === 1) { alert("차감할 재고 사용량이 없습니다."); return; }
                     await gapi.client.sheets.spreadsheets.values.batchUpdate({ spreadsheetId: SPREADSHEET_ID, resource: { data: updateData, valueInputOption: 'USER_ENTERED' } });
                     alert(`재고 차감이 완료되었습니다.\n기록된 열: ${targetColLetter}`); setIsStockModalOpen(false);
-                } catch (error) { console.error(error); alert("재고 차감 중 오류가 발생했습니다."); }
+                } catch (error) { console.error(error); alert("재고 차감 중 오류가 발생했습니다. 구글 계정 권한을 확인하세요."); }
             };
 
             const Sidebar = memo(({ viewMode, setViewMode, projectInfo, setProjectInfo, isNoDongMode, setIsNoDongMode }) => {
