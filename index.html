@@ -170,10 +170,25 @@
             return items;
         };
 
+        const DongTabs = ({ dongs, currentDong, setCurrentDong, addDong, deleteDong, renameDong }) => (
+            <div className="flex gap-2 mb-4 overflow-x-auto pb-2 border-b items-center print:hidden">
+                {dongs.map(dong => (
+                    <div key={dong} className="relative group">
+                        <button onDoubleClick={() => renameDong(dong)} onClick={() => setCurrentDong(dong)} className={`px-4 py-2 rounded-t-lg font-bold text-sm whitespace-nowrap transition pr-8 ${currentDong === dong ? 'bg-white border-x border-t border-gray-200 text-blue-600 relative top-[1px]' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                            <span className="flex items-center gap-2"><Building size={14} /> {dong}</span>
+                        </button>
+                        <div className={`absolute right-1 top-1/2 -translate-y-1/2 flex gap-1 ${currentDong === dong ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition`}>
+                            <button onClick={(e) => { e.stopPropagation(); deleteDong(dong); }} className="p-0.5 text-gray-400 hover:text-red-500 rounded"><Trash2 size={10} /></button>
+                        </div>
+                    </div>
+                ))}
+                <button onClick={addDong} className="px-3 py-2 text-gray-400 hover:text-blue-600 font-bold text-sm bg-gray-50 rounded hover:bg-blue-50 transition"><Plus size={16} /></button>
+            </div>
+        );
+
         const StockDeductModal = ({ isOpen, onClose, onConfirm, dongs, isLoggedIn, handleLogin }) => {
             if (!isOpen) return null;
-            // 차감은 중복 차감을 막기 위해 동별로 하나의 버전만 선택하도록 Radio(select) 유지
-            const [dongModes, setDongModes] = useState(() => dongs.reduce((acc, d) => ({...acc, [d]: 'manual_result'}), {})); // App2 기본은 수동
+            const [dongModes, setDongModes] = useState(() => dongs.reduce((acc, d) => ({...acc, [d]: 'manual_result'}), {}));
 
             return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -221,22 +236,6 @@
                 </div>
             );
         };
-
-        const DongTabs = ({ dongs, currentDong, setCurrentDong, addDong, deleteDong, renameDong }) => (
-            <div className="flex gap-2 mb-4 overflow-x-auto pb-2 border-b items-center print:hidden">
-                {dongs.map(dong => (
-                    <div key={dong} className="relative group">
-                        <button onDoubleClick={() => renameDong(dong)} onClick={() => setCurrentDong(dong)} className={`px-4 py-2 rounded-t-lg font-bold text-sm whitespace-nowrap transition pr-8 ${currentDong === dong ? 'bg-white border-x border-t border-gray-200 text-blue-600 relative top-[1px]' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-                            <span className="flex items-center gap-2"><Building size={14} /> {dong}</span>
-                        </button>
-                        <div className={`absolute right-1 top-1/2 -translate-y-1/2 flex gap-1 ${currentDong === dong ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition`}>
-                            <button onClick={(e) => { e.stopPropagation(); deleteDong(dong); }} className="p-0.5 text-gray-400 hover:text-red-500 rounded"><Trash2 size={10} /></button>
-                        </div>
-                    </div>
-                ))}
-                <button onClick={addDong} className="px-3 py-2 text-gray-400 hover:text-blue-600 font-bold text-sm bg-gray-50 rounded hover:bg-blue-50 transition"><Plus size={16} /></button>
-            </div>
-        );
 
         // --- App 2: Original Data View (Grid) ---
         const OriginalDataView = ({ currentDong, dongs, setCurrentDong, data, updateCurrentData, handlePaste, isNoDongMode, addDong, deleteDong, renameDong }) => {
@@ -792,7 +791,8 @@
                     let sortedPlan = [...plan]; sortedPlan.sort((a, b) => b.stockLength - a.stockLength);
                     sortedPlan.forEach((group) => {
                         const cuts = Array(8).fill().map(() => ({ l: '', count: '', marking: '', isYellow: false }));
-                        group.parts.forEach((part, idx) => { if (idx < 8) cuts[idx] = { l: part.length, count: (part.totalQty / group.qty), marking: part.marking, isYellow: part.isYellow || false }; });
+                        const sortedParts = [...group.parts].sort((a, b) => parseFloat(a.length || 0) - parseFloat(b.length || 0));
+                        sortedParts.forEach((part, idx) => { if (idx < 8) cuts[idx] = { l: part.length, count: (part.totalQty / group.qty), marking: part.marking, isYellow: part.isYellow || false }; });
                         // App1 결과를 수동으로 복사할 때 remark 도 같이 넘겨줌
                         newRows.push({ id: Date.now() + Math.random(), t: t, w: w, h: h, l: group.stockLength, qty: Math.floor(group.qty), remark: group.remark || '', cuts: cuts });
                     });
@@ -805,6 +805,28 @@
                 }
             };
 
+            const initiateStockUpdate = () => {
+                const dongsToDeduct = Object.keys(exportSelections).filter(d => exportSelections[d] && exportSelections[d].length > 0);
+                
+                if (dongsToDeduct.length === 0) {
+                    alert("재고를 차감할 대상이 없습니다.\n각 동별로 차감할 버전(작업 편의 등)을 최소 1개 이상 체크해주세요.");
+                    return;
+                }
+
+                const dongModes = {};
+                for (const dName of dongsToDeduct) {
+                    if (exportSelections[dName].length > 1) {
+                        alert(`[${dName}]에 여러 버전이 체크되어 있습니다.\n중복 차감을 방지하기 위해 각 동마다 정확히 하나의 버전만 체크한 후 다시 시도해주세요.`);
+                        return;
+                    }
+                    dongModes[dName] = exportSelections[dName][0];
+                }
+
+                if (!confirm(`선택한 ${dongsToDeduct.length}개 동의 재고 차감을 구글 시트에 기록하시겠습니까?\n(한 번 실행하면 되돌릴 수 없습니다.)`)) return;
+
+                openStockModal(dongModes);
+            };
+
             // 현재 보고 있는 탭의 체크 여부
             const isCurrentTabChecked = (exportSelections[currentDong] || []).includes(resultTab);
 
@@ -814,7 +836,7 @@
                         <h2 className="text-lg font-bold text-gray-800">최종 출력 및 보고서 {isNoDongMode ? '' : `(${currentDong})`}</h2>
                         <div className="flex gap-2">
                             <button onClick={handleCopyToManual} className="bg-indigo-50 border border-indigo-600 text-indigo-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-indigo-100 transition flex items-center gap-2"><Copy size={16} /> 이 버전을 바탕으로 수정하기</button>
-                            <button onClick={openStockModal} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:bg-red-600 transition flex items-center gap-2"><Cloud size={16} /> 재고 차감 (선택)</button>
+                            <button onClick={initiateStockUpdate} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:bg-red-600 transition flex items-center gap-2"><Cloud size={16} /> 선택 항목 재고 차감</button>
                             <button onClick={openExcelModal} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:bg-green-700 flex items-center gap-2 transition"><FileDown size={16} /> 엑셀 파일 저장</button>
                         </div>
                     </div>
@@ -836,7 +858,7 @@
                                         checked={isCurrentTabChecked} 
                                         onChange={() => toggleSelection(currentDong, resultTab)} 
                                     />
-                                    <span>현재 버전 엑셀 저장 대상으로 체크</span>
+                                    <span>현재 버전을 엑셀/차감 대상으로 체크</span>
                                 </label>
                             </div>
                             <div className="space-y-8 bg-white p-8 rounded-xl shadow-sm border border-gray-200 min-h-screen print:border-none print:p-0">
@@ -877,20 +899,21 @@
                                                 <tbody>
                                                     {plan.map((group, gIdx) => {
                                                         const rowClass = 'bg-white';
-                                                        const validCutLengths = group.parts.map(p => parseFloat(p.length || 0));
+                                                        const sortedParts = [...group.parts].sort((a, b) => parseFloat(a.length || 0) - parseFloat(b.length || 0));
+                                                        const validCutLengths = sortedParts.map(p => parseFloat(p.length || 0));
                                                         const maxPartLength = validCutLengths.length > 0 ? Math.max(...validCutLengths) : 0;
                                                         const isHighlightCondition = group.remainder <= 270 && (group.remainder + maxPartLength) >= 1000 && (group.remainder + maxPartLength) <= 2700;
 
-                                                        return group.parts.map((part, pIdx) => (
+                                                        return sortedParts.map((part, pIdx) => (
                                                             <tr key={`${gIdx}-${pIdx}`} className={`${rowClass} border-b border-gray-200 hover:bg-gray-50 transition print:bg-transparent`}>
                                                                 {pIdx === 0 && (
                                                                     <>
-                                                                        <td rowSpan={group.parts.length} className={`border-x border-gray-200 font-bold print:bg-transparent ${isHighlightCondition ? 'bg-purple-200 text-purple-900 border-purple-400' : 'bg-gray-50'}`}>{overallSeq++}</td>
-                                                                        <td rowSpan={group.parts.length} className="border-x border-gray-200">{t}</td>
-                                                                        <td rowSpan={group.parts.length} className="border-x border-gray-200">{w}</td>
-                                                                        <td rowSpan={group.parts.length} className="border-x border-gray-200">{h}</td>
-                                                                        <td rowSpan={group.parts.length} className="border-x border-gray-200 font-bold">{group.stockLength}</td>
-                                                                        <td rowSpan={group.parts.length} className="border-x border-gray-200">{Math.floor(group.qty)}</td>
+                                                                        <td rowSpan={sortedParts.length} className={`border-x border-gray-200 font-bold print:bg-transparent ${isHighlightCondition ? 'bg-purple-200 text-purple-900 border-purple-400' : 'bg-gray-50'}`}>{overallSeq++}</td>
+                                                                        <td rowSpan={sortedParts.length} className="border-x border-gray-200">{t}</td>
+                                                                        <td rowSpan={sortedParts.length} className="border-x border-gray-200">{w}</td>
+                                                                        <td rowSpan={sortedParts.length} className="border-x border-gray-200">{h}</td>
+                                                                        <td rowSpan={sortedParts.length} className="border-x border-gray-200 font-bold">{group.stockLength}</td>
+                                                                        <td rowSpan={sortedParts.length} className="border-x border-gray-200">{Math.floor(group.qty)}</td>
                                                                     </>
                                                                 )}
                                                                 <td className={`border-x border-gray-200 font-bold text-gray-800 ${part.isYellow ? 'bg-yellow-100' : ''}`}>{part.length}</td>
@@ -899,9 +922,9 @@
                                                                 <td className={`border-x border-gray-200 text-left px-2 truncate max-w-[150px] ${part.isYellow ? 'bg-yellow-100' : ''}`}>{part.marking}</td>
                                                                 {pIdx === 0 && (
                                                                     <>
-                                                                        <td rowSpan={group.parts.length} className={`border-x border-gray-200 font-bold ${group.remainder >= 400 ? 'bg-[#FFCCBC] text-red-600' : ''}`}>{Number(group.remainder).toLocaleString()}</td>
-                                                                        <td rowSpan={group.parts.length} className="border-x border-gray-200 text-gray-500">{(Number(group.remainder) * Number(group.qty)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                                                                        <td rowSpan={group.parts.length} className="border-x border-gray-200 text-gray-600 text-left px-1">{group.remark || ''}</td>
+                                                                        <td rowSpan={sortedParts.length} className={`border-x border-gray-200 font-bold ${group.remainder >= 400 ? 'bg-[#FFCCBC] text-red-600' : ''}`}>{Number(group.remainder).toLocaleString()}</td>
+                                                                        <td rowSpan={sortedParts.length} className="border-x border-gray-200 text-gray-500">{(Number(group.remainder) * Number(group.qty)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                                                                        <td rowSpan={sortedParts.length} className="border-x border-gray-200 text-gray-600 text-left px-1">{group.remark || ''}</td>
                                                                     </>
                                                                 )}
                                                             </tr>
@@ -987,7 +1010,6 @@
             const [manualData, setManualData] = useState({});
 
             const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
-            const [isStockModalOpen, setIsStockModalOpen] = useState(false);
             
             // 엑셀 저장을 위한 버전 선택 상태 관리 (기본적으로 모두 체크 해제된 상태로 초기화)
             const [exportSelections, setExportSelections] = useState({});
@@ -1121,8 +1143,8 @@
                 let seq = 1; const stockSummary = {}; const cutPartMap = new Map(); const statsMap = {}; let grandTotalStockQty = 0; let grandTotalCutQty = 0; let grandTotalLoss = 0; 
                 specKeys.forEach(specKey => { const { plan } = results[specKey]; let w = "?", h = "?", t = "?"; try { const dims = specKey.split(' ')[0] || ""; const thick = specKey.split(' ')[1] || ""; if (dims.includes('*')) [w, h] = dims.split('*'); else if (dims.includes('x')) [w, h] = dims.split('x'); t = thick.replace('T', ''); } catch (e) { } const unitWeight = getUnitWeight(w, h, t); const statKey = `${t}|${w}|${h}`; if (!statsMap[statKey]) { statsMap[statKey] = { t, w, h, inputLen: 0, inputWt: 0, prodLen: 0, prodWt: 0 }; } 
                 let sortedPlan = [...plan]; sortedPlan.sort((a, b) => b.stockLength - a.stockLength); 
-                sortedPlan.forEach(group => { grandTotalStockQty += Number(group.qty || 0); grandTotalLoss += (Number(group.remainder || 0) * Number(group.qty || 0)); const summaryKey = `${t}|${w}|${h}|${group.stockLength}`; if (!stockSummary[summaryKey]) stockSummary[summaryKey] = 0; stockSummary[summaryKey] += Number(group.qty || 0); const inL = Number(group.stockLength || 0) * Number(group.qty || 0); statsMap[statKey].inputLen += inL; statsMap[statKey].inputWt += (inL / 1000 * unitWeight); const groupStartRow = currentRow; const rowHeight = Math.max(1, (group.parts || []).length); const groupColor = { type: 'pattern', pattern: 'solid', fgColor: { argb: specColorMap[specKey] } }; 
-                (group.parts || []).forEach((part, pIdx) => { grandTotalCutQty += Number(part.totalQty || 0); const outL = Number(part.length || 0) * Number(part.totalQty || 0); statsMap[statKey].prodLen += outL; statsMap[statKey].prodWt += (outL / 1000 * unitWeight); const partKey = `${t}|${w}|${h}|${part.length}|${part.marking}`; if (cutPartMap.has(partKey)) { cutPartMap.get(partKey).qty += Number(part.totalQty || 0); } else { cutPartMap.set(partKey, { t, w, h, length: part.length, qty: Number(part.totalQty || 0), marking: part.marking, specKey }); } const row = worksheet.getRow(currentRow); if (pIdx === 0) { row.getCell(1).value = seq++; row.getCell(2).value = t; row.getCell(3).value = w; row.getCell(4).value = h; row.getCell(5).value = Number(group.stockLength); row.getCell(6).value = Math.floor(group.qty); } row.getCell(7).value = Number(part.length); row.getCell(8).value = (part.totalQty / group.qty); row.getCell(9).value = Math.floor(part.totalQty); row.getCell(10).value = part.marking; if (pIdx === 0) { row.getCell(11).value = Number(group.remainder); row.getCell(12).value = Number(group.remainder) * Number(group.qty); row.getCell(13).value = group.remark || ''; } for (let c = 1; c <= 13; c++) { const cell = row.getCell(c); cell.border = borderAll; cell.alignment = alignCenter; cell.font = fontNormal; if (c <= 5) { cell.fill = groupColor; } else if (c === 6 || c === 9) { cell.fill = fillLightGray; } else { cell.fill = fillWhite; } if ([5, 6, 9, 11, 12].includes(c)) cell.numFmt = '#,##0'; } 
+                sortedPlan.forEach(group => { grandTotalStockQty += Number(group.qty || 0); grandTotalLoss += (Number(group.remainder || 0) * Number(group.qty || 0)); const summaryKey = `${t}|${w}|${h}|${group.stockLength}`; if (!stockSummary[summaryKey]) stockSummary[summaryKey] = 0; stockSummary[summaryKey] += Number(group.qty || 0); const inL = Number(group.stockLength || 0) * Number(group.qty || 0); statsMap[statKey].inputLen += inL; statsMap[statKey].inputWt += (inL / 1000 * unitWeight); const groupStartRow = currentRow; const sortedParts = [...(group.parts || [])].sort((a, b) => parseFloat(a.length || 0) - parseFloat(b.length || 0)); const rowHeight = Math.max(1, sortedParts.length); const groupColor = { type: 'pattern', pattern: 'solid', fgColor: { argb: specColorMap[specKey] } }; 
+                sortedParts.forEach((part, pIdx) => { grandTotalCutQty += Number(part.totalQty || 0); const outL = Number(part.length || 0) * Number(part.totalQty || 0); statsMap[statKey].prodLen += outL; statsMap[statKey].prodWt += (outL / 1000 * unitWeight); const partKey = `${t}|${w}|${h}|${part.length}|${part.marking}`; if (cutPartMap.has(partKey)) { cutPartMap.get(partKey).qty += Number(part.totalQty || 0); } else { cutPartMap.set(partKey, { t, w, h, length: part.length, qty: Number(part.totalQty || 0), marking: part.marking, specKey }); } const row = worksheet.getRow(currentRow); if (pIdx === 0) { row.getCell(1).value = seq++; row.getCell(2).value = t; row.getCell(3).value = w; row.getCell(4).value = h; row.getCell(5).value = Number(group.stockLength); row.getCell(6).value = Math.floor(group.qty); } row.getCell(7).value = Number(part.length); row.getCell(8).value = (part.totalQty / group.qty); row.getCell(9).value = Math.floor(part.totalQty); row.getCell(10).value = part.marking; if (pIdx === 0) { row.getCell(11).value = Number(group.remainder); row.getCell(12).value = Number(group.remainder) * Number(group.qty); row.getCell(13).value = group.remark || ''; } for (let c = 1; c <= 13; c++) { const cell = row.getCell(c); cell.border = borderAll; cell.alignment = alignCenter; cell.font = fontNormal; if (c <= 5) { cell.fill = groupColor; } else if (c === 6 || c === 9) { cell.fill = fillLightGray; } else { cell.fill = fillWhite; } if ([5, 6, 9, 11, 12].includes(c)) cell.numFmt = '#,##0'; } 
                 if (part.isYellow) { for (let c = 7; c <= 10; c++) { row.getCell(c).fill = fillYellow; } }
                 row.getCell(5).font = fontBold; row.getCell(7).font = fontBold; row.getCell(9).font = fontBold; if (pIdx === 0 && Number(group.remainder) >= 400) { const lossCell = row.getCell(11); lossCell.fill = fillRed; lossCell.font = fontRedBold; } currentRow++; }); 
                 if (rowHeight > 1) { const endRow = groupStartRow + rowHeight - 1; [1, 2, 3, 4, 5, 6, 11, 12, 13].forEach(c => worksheet.mergeCells(groupStartRow, c, endRow, c)); } const lastRowOfGroup = worksheet.getRow(currentRow - 1); for (let c = 1; c <= 13; c++) lastRowOfGroup.getCell(c).border = { ...borderAll, bottom: { style: 'medium' } }; }); }); 
@@ -1205,23 +1227,9 @@
                 try {
                     const headerRange = 'Sheet1!H4:AK4'; const headerRes = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: headerRange });
                     const headers = headerRes.result.values ? headerRes.result.values[0] : [];
-                    
-                    // 빈 열 찾기 로직 수정: L열(인덱스 11)부터 AK열(인덱스 36)까지 순회하며 빈 곳 찾기
-                    let targetColIndex = -1;
-                    for (let i = 11; i <= 36; i++) {
-                        if (!headers[i] || headers[i].trim() === '') {
-                            targetColIndex = i;
-                            break;
-                        }
-                    }
-
-                    if (targetColIndex === -1) {
-                        alert("더 이상 기록할 빈 열이 없습니다 (AK열 초과). L~AK열을 비워주세요.");
-                        return;
-                    }
-
-                    const targetColNum = targetColIndex + 1; // 1-based index for getColumnLetter
-                    const targetColLetter = getColumnLetter(targetColNum);
+                    let emptyColIndex = headers.length; 
+                    if(emptyColIndex >= 30) { alert("더 이상 기록할 빈 열이 없습니다 (AK열 초과)."); return; }
+                    const targetColNum = 8 + emptyColIndex; const targetColLetter = getColumnLetter(targetColNum);
 
                     const updateData = []; const companyName = `${projectInfo.company || '업체미상'}(${projectInfo.site || '현장미상'})`;
                     updateData.push({ range: `Sheet1!${targetColLetter}4`, values: [[companyName]] });
@@ -1234,7 +1242,7 @@
                     if(updateData.length === 1) { alert("차감할 재고 사용량이 없습니다."); return; }
                     await gapi.client.sheets.spreadsheets.values.batchUpdate({ spreadsheetId: SPREADSHEET_ID, resource: { data: updateData, valueInputOption: 'USER_ENTERED' } });
                     alert(`재고 차감이 완료되었습니다.\n기록된 열: ${targetColLetter}`); setIsStockModalOpen(false);
-                } catch (error) { console.error(error); alert("재고 차감 중 오류가 발생했습니다. 구글 계정 권한을 확인하세요."); }
+                } catch (error) { console.error(error); alert("재고 차감 중 오류가 발생했습니다."); }
             };
 
             const Sidebar = memo(({ viewMode, setViewMode, projectInfo, setProjectInfo, isNoDongMode, setIsNoDongMode }) => {
