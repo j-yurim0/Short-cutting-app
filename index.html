@@ -570,22 +570,28 @@
                                             const visibleCuts = hideEmpty ? cuts.filter(c => c.l && c.count) : cuts;
                                             const renderCuts = visibleCuts.length > 0 ? visibleCuts : (hideEmpty ? [] : cuts);
                                             const rowSpan = Math.max(1, renderCuts.length);
-                                            const usedLength = cuts.reduce((acc, c) => acc + (parseFloat(c.l || 0) * parseFloat(c.count || 0)), 0);
-                                            const lossPerBar = row.l - usedLength;
-                                            const totalRowLoss = lossPerBar * row.qty;
+                                            
+                                            // 엄격한 숫자 변환 로직 적용 (문자열 이어붙임 방지)
+                                            const stockLengthNum = parseFloat(row.l) || 0;
+                                            const rowQtyNum = parseFloat(row.qty) || 0;
+
+                                            const usedLength = cuts.reduce((acc, c) => acc + ((parseFloat(c.l) || 0) * (parseFloat(c.count) || 0)), 0);
+                                            const lossPerBar = stockLengthNum - usedLength;
+                                            const totalRowLoss = lossPerBar * rowQtyNum;
                                             
                                             // 하이라이트 규칙(변경): 노란색 체크박스 선택시 해당 항목 기준으로 적용, 없으면 전체 중 최장 길이 기준
-                                            const yellowCutLengths = cuts.filter(p => p.l && p.isYellow).map(p => parseFloat(p.l));
-                                            const validCutLengths = cuts.filter(p => p.l).map(p => parseFloat(p.l));
+                                            const yellowCutLengths = cuts.filter(p => p.isYellow).map(p => parseFloat(p.l)).filter(l => !isNaN(l) && l > 0);
+                                            const validCutLengths = cuts.map(p => parseFloat(p.l)).filter(l => !isNaN(l) && l > 0);
                                             const targetMaxLen = yellowCutLengths.length > 0 ? Math.max(...yellowCutLengths) : (validCutLengths.length > 0 ? Math.max(...validCutLengths) : 0);
                                             
-                                            const isHighlightCondition = lossPerBar <= 500 && (lossPerBar + targetMaxLen) >= 1000 && (lossPerBar + targetMaxLen) <= 2700;
+                                            // 본당 LOSS 270 이하일 때만 보라색 칠해지도록 복구
+                                            const isHighlightCondition = lossPerBar <= 270 && (lossPerBar + targetMaxLen) >= 1000 && (lossPerBar + targetMaxLen) <= 2700;
 
                                             return (
                                                 <React.Fragment key={row.id || rIdx}>
                                                     {renderCuts.map((cut, cIdx) => {
                                                         const isFirst = cIdx === 0;
-                                                        const cutQty = (parseInt(cut.count) * parseInt(row.qty)) || '';
+                                                        const cutQty = ((parseFloat(cut.count) || 0) * rowQtyNum) || '';
                                                         return (
                                                             <tr key={cIdx} className="border-b border-gray-200 hover:bg-gray-50 h-8">
                                                                 {isFirst && (<>
@@ -794,8 +800,8 @@
                                 let sLen = 0;
                                 let lLen = 0;
                                 plan.forEach(group => {
-                                    sLen += (group.stockLength * group.qty);
-                                    lLen += (group.remainder * group.qty);
+                                    sLen += (parseFloat(group.stockLength) || 0) * (parseFloat(group.qty) || 0);
+                                    lLen += (parseFloat(group.remainder) || 0) * (parseFloat(group.qty) || 0);
                                 });
                                 
                                 dInput += (sLen / 1000) * unitWeight;
@@ -829,7 +835,7 @@
                     const { plan } = results[specKey];
                     let w = "100", h = "100", t = "2.1";
                     try { const dims = specKey.split(' ')[0] || ""; const tPart = specKey.split(' ')[1] || ""; if (dims.includes('*')) [w, h] = dims.split('*'); else if (dims.includes('x')) [w, h] = dims.split('x'); t = tPart.replace('T', ''); } catch (e) { }
-                    let sortedPlan = [...plan]; sortedPlan.sort((a, b) => b.stockLength - a.stockLength);
+                    let sortedPlan = [...plan]; sortedPlan.sort((a, b) => (parseFloat(b.stockLength) || 0) - (parseFloat(a.stockLength) || 0));
                     sortedPlan.forEach((group) => {
                         const cuts = Array(8).fill().map(() => ({ l: '', count: '', marking: '', isYellow: false }));
                         const sortedParts = [...group.parts].sort((a, b) => parseFloat(a.length || 0) - parseFloat(b.length || 0));
@@ -952,14 +958,15 @@
                                 {specKeys.map((specKey, idx) => {
                                     const { plan, summary } = results[specKey];
                                     let w = "?", h = "?", t = "?"; try { const dims = specKey.split(' ')[0] || ""; const tPart = specKey.split(' ')[1] || ""; if (dims.includes('*')) [w, h] = dims.split('*'); else if (dims.includes('x')) [w, h] = dims.split('x'); else { w = dims; h = ""; } t = tPart.replace('T', ''); } catch (e) { }
-                                    const totalBarsDisplay = summary.totalBars || plan.reduce((acc, p) => acc + Number(p.qty || 0), 0);
-                                    const totalLossValue = summary.totalLoss !== undefined ? summary.totalLoss : plan.reduce((acc, p) => acc + (Number(p.remainder || 0) * Number(p.qty || 0)), 0);
+                                    
+                                    const totalBarsDisplay = summary.totalBars || plan.reduce((acc, p) => acc + (parseFloat(p.qty) || 0), 0);
+                                    const totalLossValue = summary.totalLoss !== undefined ? summary.totalLoss : plan.reduce((acc, p) => acc + ((parseFloat(p.remainder) || 0) * (parseFloat(p.qty) || 0)), 0);
                                     const displayLoss = Number(totalLossValue).toLocaleString();
 
                                     // 중량 계산
                                     const unitWeight = getUnitWeight(w, h, t);
                                     let totalStockLen = 0;
-                                    plan.forEach(group => { totalStockLen += (group.stockLength * group.qty); });
+                                    plan.forEach(group => { totalStockLen += ((parseFloat(group.stockLength) || 0) * (parseFloat(group.qty) || 0)); });
                                     const inputWeight = (totalStockLen / 1000) * unitWeight;
                                     const lossWeight = (totalLossValue / 1000) * unitWeight;
                                     const prodWeight = inputWeight - lossWeight;
@@ -988,12 +995,14 @@
                                                         const rowClass = 'bg-white';
                                                         const sortedParts = [...group.parts].sort((a, b) => parseFloat(a.length || 0) - parseFloat(b.length || 0));
                                                         
-                                                        // 하이라이트 규칙(변경): 노란색 체크박스 선택시 해당 항목 기준으로 적용, 없으면 전체 중 최장 길이 기준
-                                                        const yellowCutLengths = sortedParts.filter(p => p.length && p.isYellow).map(p => parseFloat(p.length));
-                                                        const validCutLengths = sortedParts.filter(p => p.length).map(p => parseFloat(p.length));
+                                                        // 하이라이트 규칙 적용: 모든 문자를 숫자로 강제 변환하여 문자열 연산 오류 방지
+                                                        const groupRemainderNum = parseFloat(group.remainder) || 0;
+                                                        const yellowCutLengths = sortedParts.filter(p => p.isYellow).map(p => parseFloat(p.length)).filter(l => !isNaN(l) && l > 0);
+                                                        const validCutLengths = sortedParts.map(p => parseFloat(p.length)).filter(l => !isNaN(l) && l > 0);
                                                         const targetMaxLen = yellowCutLengths.length > 0 ? Math.max(...yellowCutLengths) : (validCutLengths.length > 0 ? Math.max(...validCutLengths) : 0);
                                                         
-                                                        const isHighlightCondition = group.remainder <= 500 && (group.remainder + targetMaxLen) >= 1000 && (group.remainder + targetMaxLen) <= 2700;
+                                                        // 본당 LOSS 270 이하일 때만 보라색 칠해지도록 복구
+                                                        const isHighlightCondition = groupRemainderNum <= 270 && (groupRemainderNum + targetMaxLen) >= 1000 && (groupRemainderNum + targetMaxLen) <= 2700;
 
                                                         return sortedParts.map((part, pIdx) => (
                                                             <tr key={`${gIdx}-${pIdx}`} className={`${rowClass} border-b border-gray-200 hover:bg-gray-50 transition print:bg-transparent`}>
@@ -1013,8 +1022,8 @@
                                                                 <td className={`border-x border-gray-200 text-left px-2 truncate max-w-[150px] ${part.isYellow ? 'bg-yellow-100' : ''}`}>{part.marking}</td>
                                                                 {pIdx === 0 && (
                                                                     <>
-                                                                        <td rowSpan={sortedParts.length} className={`border-x border-gray-200 font-bold ${group.remainder >= 500 ? 'bg-[#FFCCBC] text-red-600' : ''}`}>{Number(group.remainder).toLocaleString()}</td>
-                                                                        <td rowSpan={sortedParts.length} className="border-x border-gray-200 text-gray-500">{(Number(group.remainder) * Number(group.qty)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                                                                        <td rowSpan={sortedParts.length} className={`border-x border-gray-200 font-bold ${groupRemainderNum >= 500 ? 'bg-[#FFCCBC] text-red-600' : ''}`}>{groupRemainderNum.toLocaleString()}</td>
+                                                                        <td rowSpan={sortedParts.length} className="border-x border-gray-200 text-gray-500">{(groupRemainderNum * (parseFloat(group.qty) || 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
                                                                         <td rowSpan={sortedParts.length} className="border-x border-gray-200 text-gray-600 text-left px-1">{group.remark || ''}</td>
                                                                     </>
                                                                 )}
@@ -1239,7 +1248,7 @@
                             } 
                         }); 
                     } 
-                    const usedLenInOneBar = parts.reduce((sum, p) => sum + (p.length * p.count), 0); 
+                    const usedLenInOneBar = parts.reduce((sum, p) => sum + (parseFloat(p.length) * parseFloat(p.count)), 0); 
                     const remainder = parseFloat(row.l) - usedLenInOneBar; 
                     groups[specKey].push({ stockLength: parseFloat(row.l), qty: parseInt(row.qty), parts: parts, remainder: remainder, remark: row.remark || '' }); 
                 }); 
@@ -1260,7 +1269,7 @@
                 const allResults = resultsByDong[targetDong]; const results = allResults[mode]; const specKeys = Object.keys(results).sort(); 
                 worksheet.columns = [{ width: 7 }, { width: 7 }, { width: 7 }, { width: 7 }, { width: 12 }, { width: 8 }, { width: 12 }, { width: 8 }, { width: 8 }, { width: 22 }, { width: 12 }, { width: 14 }, { width: 12 }, { width: 5 }, { width: 5 }, { width: 5 }, { width: 20 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 18 }]; 
                 const fontNormal = { name: "Malgun Gothic", size: 11, color: { argb: "FF000000" } }; const fontBold = { name: "Malgun Gothic", size: 11, bold: true, color: { argb: "FF000000" } }; const fontTitle = { name: "Malgun Gothic", size: 15, bold: true, color: { argb: "FF000000" } }; const fontRedBold = { name: "Malgun Gothic", size: 11, bold: true, color: { argb: "FFFF0000" } }; 
-                const fillHeader = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCEEFF' } }; const fillTotal = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCEEFF' } }; const fillRed = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFCCBC' } }; const fillYellow = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } }; const fillLightGray = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEEEEE' } }; const fillWhite = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }; 
+                const fillHeader = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCEEFF' } }; const fillTotal = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCEEFF' } }; const fillRed = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFCCBC' } }; const fillYellow = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } }; const fillLightGray = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEEEEE' } }; const fillWhite = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }; const fillPurple = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE9D5FF' } }; const fontPurpleBold = { name: "Malgun Gothic", size: 11, bold: true, color: { argb: "FF581C87" } };
                 const borderAll = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } }; const alignCenter = { vertical: 'middle', horizontal: 'center' }; 
                 const palette = ["FFFFFFFF", "FFFFF2CC", "FFFCE4EC", "FFE2F0D9", "FFE1F5FE", "FFF3E5F5"]; const specColorMap = {}; specKeys.forEach((key, idx) => { specColorMap[key] = (specKeys.length > 1) ? palette[idx % palette.length] : "FFFFFFFF"; }); 
                 let currentRow = 1; const titleRow = worksheet.getRow(currentRow); let titleText = `※ ${projectInfo.company || '업체명'}(${projectInfo.site || '현장명'})`; if (!isNoDongMode) titleText += ` - ${targetDong}`; 
@@ -1270,9 +1279,10 @@
                 const headers = ['순번', '두께', '장변', '단변', '길이(원본)', '수량', '길이(컷팅)', '컷팅수', '수량', '마킹', '본당 LOSS', '총 LOSS', '비고']; const headerRow = worksheet.getRow(currentRow); headers.forEach((h, i) => { const cell = headerRow.getCell(i + 1); cell.value = h; cell.style = { font: fontBold, fill: fillHeader, alignment: alignCenter, border: borderAll }; cell.border = { ...borderAll, bottom: { style: 'medium' } }; }); currentRow++; 
                 let seq = 1; const stockSummary = {}; const cutPartMap = new Map(); const statsMap = {}; let grandTotalStockQty = 0; let grandTotalCutQty = 0; let grandTotalLoss = 0; 
                 specKeys.forEach(specKey => { const { plan } = results[specKey]; let w = "?", h = "?", t = "?"; try { const dims = specKey.split(' ')[0] || ""; const thick = specKey.split(' ')[1] || ""; if (dims.includes('*')) [w, h] = dims.split('*'); else if (dims.includes('x')) [w, h] = dims.split('x'); t = thick.replace('T', ''); } catch (e) { } const unitWeight = getUnitWeight(w, h, t); const statKey = `${t}|${w}|${h}`; if (!statsMap[statKey]) { statsMap[statKey] = { t, w, h, inputLen: 0, inputWt: 0, prodLen: 0, prodWt: 0 }; } 
-                let sortedPlan = [...plan]; sortedPlan.sort((a, b) => b.stockLength - a.stockLength); 
+                let sortedPlan = [...plan]; sortedPlan.sort((a, b) => (parseFloat(b.stockLength) || 0) - (parseFloat(a.stockLength) || 0)); 
                 sortedPlan.forEach(group => { grandTotalStockQty += Number(group.qty || 0); grandTotalLoss += (Number(group.remainder || 0) * Number(group.qty || 0)); const summaryKey = `${t}|${w}|${h}|${group.stockLength}`; if (!stockSummary[summaryKey]) stockSummary[summaryKey] = 0; stockSummary[summaryKey] += Number(group.qty || 0); const inL = Number(group.stockLength || 0) * Number(group.qty || 0); statsMap[statKey].inputLen += inL; statsMap[statKey].inputWt += (inL / 1000 * unitWeight); const groupStartRow = currentRow; const sortedParts = [...(group.parts || [])].sort((a, b) => parseFloat(a.length || 0) - parseFloat(b.length || 0)); const rowHeight = Math.max(1, sortedParts.length); const groupColor = { type: 'pattern', pattern: 'solid', fgColor: { argb: specColorMap[specKey] } }; 
-                sortedParts.forEach((part, pIdx) => { grandTotalCutQty += Number(part.totalQty || 0); const outL = Number(part.length || 0) * Number(part.totalQty || 0); statsMap[statKey].prodLen += outL; statsMap[statKey].prodWt += (outL / 1000 * unitWeight); const partKey = `${t}|${w}|${h}|${part.length}|${part.marking}`; if (cutPartMap.has(partKey)) { cutPartMap.get(partKey).qty += Number(part.totalQty || 0); } else { cutPartMap.set(partKey, { t, w, h, length: part.length, qty: Number(part.totalQty || 0), marking: part.marking, specKey }); } const row = worksheet.getRow(currentRow); if (pIdx === 0) { row.getCell(1).value = seq++; row.getCell(2).value = t; row.getCell(3).value = w; row.getCell(4).value = h; row.getCell(5).value = Number(group.stockLength); row.getCell(6).value = Math.floor(group.qty); } row.getCell(7).value = Number(part.length); row.getCell(8).value = (part.totalQty / group.qty); row.getCell(9).value = Math.floor(part.totalQty); row.getCell(10).value = part.marking; if (pIdx === 0) { row.getCell(11).value = Number(group.remainder); row.getCell(12).value = Number(group.remainder) * Number(group.qty); row.getCell(13).value = group.remark || ''; } for (let c = 1; c <= 13; c++) { const cell = row.getCell(c); cell.border = borderAll; cell.alignment = alignCenter; cell.font = fontNormal; if (c <= 5) { cell.fill = groupColor; } else if (c === 6 || c === 9) { cell.fill = fillLightGray; } else { cell.fill = fillWhite; } if ([5, 6, 9, 11, 12].includes(c)) cell.numFmt = '#,##0'; } 
+                const groupRemainderNum = parseFloat(group.remainder) || 0; const yellowCutLengths = sortedParts.filter(p => p.isYellow).map(p => parseFloat(p.length)).filter(l => !isNaN(l) && l > 0); const validCutLengths = sortedParts.map(p => parseFloat(p.length)).filter(l => !isNaN(l) && l > 0); const targetMaxLen = yellowCutLengths.length > 0 ? Math.max(...yellowCutLengths) : (validCutLengths.length > 0 ? Math.max(...validCutLengths) : 0); const isHighlightCondition = groupRemainderNum <= 270 && (groupRemainderNum + targetMaxLen) >= 1000 && (groupRemainderNum + targetMaxLen) <= 2700;
+                sortedParts.forEach((part, pIdx) => { grandTotalCutQty += Number(part.totalQty || 0); const outL = Number(part.length || 0) * Number(part.totalQty || 0); statsMap[statKey].prodLen += outL; statsMap[statKey].prodWt += (outL / 1000 * unitWeight); const partKey = `${t}|${w}|${h}|${part.length}|${part.marking}`; if (cutPartMap.has(partKey)) { cutPartMap.get(partKey).qty += Number(part.totalQty || 0); } else { cutPartMap.set(partKey, { t, w, h, length: part.length, qty: Number(part.totalQty || 0), marking: part.marking, specKey }); } const row = worksheet.getRow(currentRow); if (pIdx === 0) { row.getCell(1).value = seq++; row.getCell(2).value = t; row.getCell(3).value = w; row.getCell(4).value = h; row.getCell(5).value = Number(group.stockLength); row.getCell(6).value = Math.floor(group.qty); } row.getCell(7).value = Number(part.length); row.getCell(8).value = (part.totalQty / group.qty); row.getCell(9).value = Math.floor(part.totalQty); row.getCell(10).value = part.marking; if (pIdx === 0) { row.getCell(11).value = Number(group.remainder); row.getCell(12).value = Number(group.remainder) * Number(group.qty); row.getCell(13).value = group.remark || ''; } for (let c = 1; c <= 13; c++) { const cell = row.getCell(c); cell.border = borderAll; cell.alignment = alignCenter; cell.font = fontNormal; if (c <= 5) { cell.fill = groupColor; } else if (c === 6 || c === 9) { cell.fill = fillLightGray; } else { cell.fill = fillWhite; } if ([5, 6, 9, 11, 12].includes(c)) cell.numFmt = '#,##0'; if (c === 1 && isHighlightCondition && pIdx === 0) { cell.fill = fillPurple; cell.font = fontPurpleBold; } } 
                 if (part.isYellow) { for (let c = 7; c <= 10; c++) { row.getCell(c).fill = fillYellow; } }
                 row.getCell(5).font = fontBold; row.getCell(7).font = fontBold; row.getCell(9).font = fontBold; if (pIdx === 0 && Number(group.remainder) >= 500) { const lossCell = row.getCell(11); lossCell.fill = fillRed; lossCell.font = fontRedBold; } currentRow++; }); 
                 if (rowHeight > 1) { const endRow = groupStartRow + rowHeight - 1; [1, 2, 3, 4, 5, 6, 11, 12, 13].forEach(c => worksheet.mergeCells(groupStartRow, c, endRow, c)); } const lastRowOfGroup = worksheet.getRow(currentRow - 1); for (let c = 1; c <= 13; c++) lastRowOfGroup.getCell(c).border = { ...borderAll, bottom: { style: 'medium' } }; }); }); 
@@ -1377,7 +1387,7 @@
 
                     if(updateData.length === 1) { alert("차감할 재고 사용량이 없습니다."); return; }
                     await gapi.client.sheets.spreadsheets.values.batchUpdate({ spreadsheetId: SPREADSHEET_ID, resource: { data: updateData, valueInputOption: 'USER_ENTERED' } });
-                    alert(`재고 차감이 완료되었습니다.\n기록된 열: ${targetColLetter}`); setIsStockModalOpen(false);
+                    alert(`재고 차감이 완료되었습니다.\n기록된 열: ${targetColLetter}`);
                 } catch (error) { console.error(error); alert("재고 차감 중 오류가 발생했습니다. 구글 계정 권한을 확인하세요."); }
             };
 
