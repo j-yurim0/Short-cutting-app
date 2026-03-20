@@ -187,7 +187,7 @@
         );
 
         // --- App 2: Original Data View (Grid) ---
-        const OriginalDataView = ({ currentDong, dongs, setCurrentDong, data, updateCurrentData, handlePaste, isNoDongMode, addDong, deleteDong, renameDong }) => {
+        const OriginalDataView = ({ currentDong, dongs, setCurrentDong, data, updateCurrentData, handlePaste, isNoDongMode, addDong, deleteDong, renameDong, dongData, setDongData }) => {
             const handleCellChange = (rIdx, cIdx, val) => { 
                 const newData = [...(data.gridData || [])]; 
                 newData[rIdx] = [...newData[rIdx]];
@@ -208,6 +208,29 @@
                 alert(`총 ${items.length}개의 파트가 견적 데이터로 확정되었습니다.\n[CP 직접 편집] 탭의 견적 물량에 연동됩니다.`);
             };
 
+            const applyAllEstimates = () => {
+                let updatedCount = 0;
+                setDongData(prev => {
+                    const nextDongData = { ...prev };
+                    dongs.forEach(dName => {
+                        const dData = nextDongData[dName];
+                        if (dData && dData.gridData && dData.gridData.length > 0) {
+                            const items = parseItemsFromGrid(dData.gridData, dData.colMapping || {}, dData.spec || '100*100', dData.thickness || '2.1');
+                            if (items.length > 0) {
+                                nextDongData[dName] = { ...dData, parsedItems: items };
+                                updatedCount++;
+                            }
+                        }
+                    });
+                    return nextDongData;
+                });
+                if (updatedCount > 0) {
+                    alert(`총 ${updatedCount}개 동의 견적 데이터가 모두 확정되었습니다.\n[CP 직접 편집] 탭의 견적 물량에 연동됩니다.`);
+                } else {
+                    alert("확정할 엑셀 데이터가 있는 동이 없습니다.");
+                }
+            };
+
             const resetGrid = () => {
                 if (confirm(`'${currentDong}'의 원본 견적 데이터를 초기화하시겠습니까?\n초기화 후 새로운 엑셀을 붙여넣을 수 있습니다.`)) {
                     updateCurrentData({ rawInput: '', gridData: [], parsedItems: [] });
@@ -219,7 +242,8 @@
                     <div className="flex justify-between items-center mb-4 print:hidden">
                         <h2 className="text-lg font-bold text-gray-800">원본 견적 관리 (App 2) {isNoDongMode ? '' : `(${currentDong})`}</h2>
                         <div className="flex gap-2">
-                            <button onClick={applyEstimate} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:bg-indigo-700 transition flex items-center gap-2"><Save size={16} /> 견적 데이터 확정 (파싱)</button>
+                            <button onClick={applyEstimate} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:bg-indigo-700 transition flex items-center gap-2"><Save size={16} /> 현재 동 확정</button>
+                            <button onClick={applyAllEstimates} className="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-bold shadow hover:bg-gray-900 transition flex items-center gap-2"><Layers size={16} /> 전체 동 확정</button>
                         </div>
                     </div>
                     {!isNoDongMode && <DongTabs dongs={dongs} currentDong={currentDong} setCurrentDong={setCurrentDong} addDong={addDong} deleteDong={deleteDong} renameDong={renameDong} />}
@@ -333,13 +357,13 @@
 
             // --- 키보드 기하학적 및 논리적 이동 기능 ---
             const handleKeyDown = (e) => {
-                if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+                if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'].includes(e.key)) return;
                 
                 const target = e.target;
                 if (!target.classList.contains('input-cell')) return;
 
                 // 숫자 증감 등 브라우저 기본 동작 완벽 차단
-                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter') {
                     e.preventDefault();
                 }
 
@@ -349,7 +373,14 @@
 
                 let nextFocus = null;
 
-                if (e.key === 'ArrowLeft') {
+                if (e.key === 'Enter') {
+                    // 엔터 키: 다음 순번(rIdx + 1)의 동일한 컬럼으로 이동
+                    if (colName.startsWith('cut_')) {
+                        nextFocus = document.querySelector(`input[data-ridx="${rIdx + 1}"][data-cidx="${cIdx}"][data-col="${colName}"]`);
+                    } else {
+                        nextFocus = document.querySelector(`input[data-ridx="${rIdx + 1}"][data-col="${colName}"]`);
+                    }
+                } else if (e.key === 'ArrowLeft') {
                     if (colName === 'cut_l') {
                         // 컷팅 길이에서 왼쪽 화살표: 해당 행의 수량(qty) 셀로 이동
                         nextFocus = document.querySelector(`input[data-ridx="${rIdx}"][data-col="qty"]`);
@@ -524,10 +555,10 @@
                                             <th className="border w-12">단변</th>
                                             <th className="border w-16">길이</th>
                                             <th className="border w-12">수량</th>
-                                            <th className="border w-32 bg-white border-2 border-indigo-100 text-indigo-700">길이</th>
+                                            <th className="border w-24 bg-white border-2 border-indigo-100 text-indigo-700">길이</th>
                                             <th className="border w-12 bg-white border-2 border-indigo-100 text-indigo-700">컷팅수</th>
                                             <th className="border w-12 bg-white border-2 border-indigo-100 text-indigo-700">수량</th>
-                                            <th className="border w-40 bg-white border-2 border-indigo-100 text-indigo-700">마킹</th>
+                                            <th className="border w-48 bg-white border-2 border-indigo-100 text-indigo-700">마킹</th>
                                             <th className="border w-16">본당LOSS</th>
                                             <th className="border w-20">총LOSS</th>
                                             <th className="border w-16">비고</th>
@@ -543,10 +574,12 @@
                                             const lossPerBar = row.l - usedLength;
                                             const totalRowLoss = lossPerBar * row.qty;
                                             
+                                            // 하이라이트 규칙(변경): 노란색 체크박스 선택시 해당 항목 기준으로 적용, 없으면 전체 중 최장 길이 기준
+                                            const yellowCutLengths = cuts.filter(p => p.l && p.isYellow).map(p => parseFloat(p.l));
                                             const validCutLengths = cuts.filter(p => p.l).map(p => parseFloat(p.l));
-                                            const maxPartLength = validCutLengths.length > 0 ? Math.max(...validCutLengths) : 0;
-                                            // 하이라이트 규칙 변경: 잔재 500 이하 & (잔재 + 제일 긴 자재 길이)가 1000~2700
-                                            const isHighlightCondition = lossPerBar <= 500 && (lossPerBar + maxPartLength) >= 1000 && (lossPerBar + maxPartLength) <= 2700;
+                                            const targetMaxLen = yellowCutLengths.length > 0 ? Math.max(...yellowCutLengths) : (validCutLengths.length > 0 ? Math.max(...validCutLengths) : 0);
+                                            
+                                            const isHighlightCondition = lossPerBar <= 500 && (lossPerBar + targetMaxLen) >= 1000 && (lossPerBar + targetMaxLen) <= 2700;
 
                                             return (
                                                 <React.Fragment key={row.id || rIdx}>
@@ -730,6 +763,65 @@
             const specKeys = results ? Object.keys(results).sort() : [];
             let overallSeq = 1;
 
+            // --- 요약표 (Summary) 데이터 계산 로직 ---
+            const summaryData = useMemo(() => {
+                let totalInput = 0;
+                let totalProd = 0;
+                let totalLoss = 0;
+                const rows = [];
+
+                dongs.forEach(dName => {
+                    const selectedModes = exportSelections[dName] || [];
+                    selectedModes.forEach(mode => {
+                        const res = resultsByDong[dName];
+                        if (res && res[mode]) {
+                            let dInput = 0;
+                            let dLoss = 0;
+                            
+                            Object.keys(res[mode]).forEach(specKey => {
+                                const { plan } = res[mode][specKey];
+                                let w = "100", h = "100", t = "2.1";
+                                try { 
+                                    const dims = specKey.split(' ')[0] || ""; 
+                                    const tPart = specKey.split(' ')[1] || ""; 
+                                    if (dims.includes('*')) [w, h] = dims.split('*'); 
+                                    else if (dims.includes('x')) [w, h] = dims.split('x'); 
+                                    t = tPart.replace('T', ''); 
+                                } catch (e) { }
+                                
+                                const unitWeight = getUnitWeight(w, h, t);
+                                
+                                let sLen = 0;
+                                let lLen = 0;
+                                plan.forEach(group => {
+                                    sLen += (group.stockLength * group.qty);
+                                    lLen += (group.remainder * group.qty);
+                                });
+                                
+                                dInput += (sLen / 1000) * unitWeight;
+                                dLoss += (lLen / 1000) * unitWeight;
+                            });
+                            
+                            const dProd = dInput - dLoss;
+                            
+                            totalInput += dInput;
+                            totalProd += dProd;
+                            totalLoss += dLoss;
+                            
+                            rows.push({
+                                dong: dName,
+                                mode: mode === 'min_rows' ? '작업편의' : (mode === 'min_loss' ? 'LOSS최소' : '수동결과'),
+                                input: dInput,
+                                prod: dProd,
+                                loss: dLoss
+                            });
+                        }
+                    });
+                });
+                
+                return { rows, totalInput, totalProd, totalLoss };
+            }, [resultsByDong, exportSelections, dongs]);
+
             const handleCopyToManual = () => {
                 if (!results) return;
                 const newRows = [];
@@ -797,6 +889,45 @@
                         </div>
                     </div>
                     
+                    {/* 전체 동 선택 버전 요약 (Summary Table) */}
+                    {summaryData.rows.length > 0 && (
+                        <div className="mb-6 bg-indigo-50 rounded-xl p-4 border border-indigo-100 print:hidden shadow-sm">
+                            <h3 className="font-bold text-indigo-800 mb-3 flex items-center gap-2"><Calculator size={18}/> 선택된 버전 총 중량 요약</h3>
+                            <table className="w-full text-sm text-center border-collapse bg-white rounded-lg overflow-hidden shadow-sm">
+                                <thead className="bg-indigo-100 text-indigo-700">
+                                    <tr>
+                                        <th className="p-2 border border-indigo-50">동 (Building)</th>
+                                        <th className="p-2 border border-indigo-50">선택된 버전</th>
+                                        <th className="p-2 border border-indigo-50">투입 중량 (kg)</th>
+                                        <th className="p-2 border border-indigo-50">생산 중량 (kg)</th>
+                                        <th className="p-2 border border-indigo-50">LOSS 중량 (kg)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {summaryData.rows.map((r, i) => (
+                                        <tr key={i} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                            <td className="p-2 border border-gray-100 font-bold">{r.dong}</td>
+                                            <td className="p-2 border border-gray-100 text-gray-600">
+                                                <span className="bg-gray-100 px-2 py-1 rounded text-xs font-bold border border-gray-200">{r.mode}</span>
+                                            </td>
+                                            <td className="p-2 border border-gray-100 font-bold text-gray-800">{r.input.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3})}</td>
+                                            <td className="p-2 border border-gray-100 font-bold text-blue-600">{r.prod.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3})}</td>
+                                            <td className="p-2 border border-gray-100 font-bold text-red-500">{r.loss.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3})}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                <tfoot className="bg-indigo-600 text-white font-bold">
+                                    <tr>
+                                        <td colSpan="2" className="p-3 text-right pr-4 tracking-wider">전 체 합 계</td>
+                                        <td className="p-3">{summaryData.totalInput.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3})}</td>
+                                        <td className="p-3">{summaryData.totalProd.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3})}</td>
+                                        <td className="p-3">{summaryData.totalLoss.toLocaleString(undefined, {minimumFractionDigits: 3, maximumFractionDigits: 3})}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    )}
+
                     {!isNoDongMode && <DongTabs dongs={dongs} currentDong={currentDong} setCurrentDong={setCurrentDong} addDong={addDong} deleteDong={deleteDong} renameDong={renameDong} />}
                     
                     {(!allResults || !results) ? (<div className="text-center py-20 bg-white rounded-xl border border-dashed border-gray-300 text-gray-400"><p>현재 탭에 표시할 결과가 없습니다.</p></div>) : (
@@ -856,9 +987,13 @@
                                                     {plan.map((group, gIdx) => {
                                                         const rowClass = 'bg-white';
                                                         const sortedParts = [...group.parts].sort((a, b) => parseFloat(a.length || 0) - parseFloat(b.length || 0));
-                                                        const validCutLengths = sortedParts.map(p => parseFloat(p.length || 0));
-                                                        const maxPartLength = validCutLengths.length > 0 ? Math.max(...validCutLengths) : 0;
-                                                        const isHighlightCondition = group.remainder <= 500 && (group.remainder + maxPartLength) >= 1000 && (group.remainder + maxPartLength) <= 2700;
+                                                        
+                                                        // 하이라이트 규칙(변경): 노란색 체크박스 선택시 해당 항목 기준으로 적용, 없으면 전체 중 최장 길이 기준
+                                                        const yellowCutLengths = sortedParts.filter(p => p.length && p.isYellow).map(p => parseFloat(p.length));
+                                                        const validCutLengths = sortedParts.filter(p => p.length).map(p => parseFloat(p.length));
+                                                        const targetMaxLen = yellowCutLengths.length > 0 ? Math.max(...yellowCutLengths) : (validCutLengths.length > 0 ? Math.max(...validCutLengths) : 0);
+                                                        
+                                                        const isHighlightCondition = group.remainder <= 500 && (group.remainder + targetMaxLen) >= 1000 && (group.remainder + targetMaxLen) <= 2700;
 
                                                         return sortedParts.map((part, pIdx) => (
                                                             <tr key={`${gIdx}-${pIdx}`} className={`${rowClass} border-b border-gray-200 hover:bg-gray-50 transition print:bg-transparent`}>
@@ -1001,6 +1136,15 @@
             // Google Auth
             const [tokenClient, setTokenClient] = useState(null);
             const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+            // 동 개수에 따른 자동 단일 CP 모드 설정
+            useEffect(() => {
+                if (dongs.length === 1) {
+                    setIsNoDongMode(true);
+                } else if (dongs.length > 1) {
+                    setIsNoDongMode(false);
+                }
+            }, [dongs.length]);
 
             const initFirebase = async () => { if (!window.FirebaseSDK) return; try { const { initializeApp, getAuth } = window.FirebaseSDK; setIsFirebaseReady(true); } catch (e) { console.warn(e); } };
             useEffect(() => { if (window.FirebaseSDK) initFirebase(); else window.addEventListener('firebase-sdk-ready', initFirebase); return () => window.removeEventListener('firebase-sdk-ready', initFirebase); }, []);
@@ -1167,10 +1311,13 @@
 
                             if (hasSheets) {
                                 const buffer = await masterWorkbook.xlsx.writeBuffer(); 
-                                // 파일 이름: 업체명_현장명_동이름.xlsx
+                                
+                                // 파일 이름: 업체명_현장명(_동이름)_CP.xlsx
                                 let fileName = `${projectInfo.company || '업체명'}_${projectInfo.site || '현장명'}`; 
-                                if (!isNoDongMode) fileName += `_${dName}`; 
-                                fileName += '.xlsx'; 
+                                if (!isNoDongMode) {
+                                    fileName += `_${dName}`; 
+                                }
+                                fileName += '_CP.xlsx'; 
                                 
                                 const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }); 
                                 saveAs(blob, fileName); 
@@ -1180,8 +1327,13 @@
                     } 
                     if (downloadedCount > 0) { 
                         alert(`총 ${downloadedCount}개의 엑셀 파일 다운로드가 시작되었습니다.`); 
-                    } else { alert("저장할 버전이 선택되지 않았거나 결과가 없습니다."); } 
-                } catch (error) { console.error(error); alert("엑셀 저장 중 오류가 발생했습니다: " + error.message); } 
+                    } else { 
+                        alert("저장할 버전이 선택되지 않았거나 결과가 없습니다."); 
+                    } 
+                } catch (error) { 
+                    console.error(error); 
+                    alert("엑셀 저장 중 오류가 발생했습니다: " + error.message); 
+                } 
             };
 
             const getColumnLetter = (colIndex) => { let temp, letter = ''; while (colIndex > 0) { temp = (colIndex - 1) % 26; letter = String.fromCharCode(temp + 65) + letter; colIndex = (colIndex - temp - 1) / 26; } return letter; }
@@ -1225,7 +1377,7 @@
 
                     if(updateData.length === 1) { alert("차감할 재고 사용량이 없습니다."); return; }
                     await gapi.client.sheets.spreadsheets.values.batchUpdate({ spreadsheetId: SPREADSHEET_ID, resource: { data: updateData, valueInputOption: 'USER_ENTERED' } });
-                    alert(`재고 차감이 완료되었습니다.\n기록된 열: ${targetColLetter}`);
+                    alert(`재고 차감이 완료되었습니다.\n기록된 열: ${targetColLetter}`); setIsStockModalOpen(false);
                 } catch (error) { console.error(error); alert("재고 차감 중 오류가 발생했습니다. 구글 계정 권한을 확인하세요."); }
             };
 
@@ -1235,7 +1387,7 @@
                 <div className="min-h-screen bg-gray-50 text-gray-900 font-sans flex">
                     <Sidebar viewMode={viewMode} setViewMode={setViewMode} projectInfo={projectInfo} setProjectInfo={setProjectInfo} isNoDongMode={isNoDongMode} setIsNoDongMode={setIsNoDongMode} />
                     <div className="flex-1 ml-64 p-8 print:m-0 print:p-0">
-                        {viewMode === 'original' && (<OriginalDataView currentDong={currentDong} dongs={dongs} setCurrentDong={setCurrentDong} addDong={addDong} deleteDong={deleteDong} renameDong={renameDong} data={getCurrentData()} updateCurrentData={updateCurrentData} handlePaste={handlePaste} isNoDongMode={isNoDongMode} />)}
+                        {viewMode === 'original' && (<OriginalDataView currentDong={currentDong} dongs={dongs} setCurrentDong={setCurrentDong} addDong={addDong} deleteDong={deleteDong} renameDong={renameDong} data={getCurrentData()} updateCurrentData={updateCurrentData} handlePaste={handlePaste} isNoDongMode={isNoDongMode} dongData={dongData} setDongData={setDongData} />)}
                         {viewMode === 'manual' && (<ManualCPView currentDong={currentDong} dongs={dongs} setCurrentDong={setCurrentDong} addDong={addDong} deleteDong={deleteDong} renameDong={renameDong} manualData={manualData} setManualData={setManualData} projectInfo={projectInfo} onConvert={handleManualToResult} isNoDongMode={isNoDongMode} dongData={dongData} />)}
                         {viewMode === 'result' && (<ResultView currentDong={currentDong} dongs={dongs} setCurrentDong={setCurrentDong} addDong={addDong} deleteDong={deleteDong} renameDong={renameDong} resultsByDong={resultsByDong} projectInfo={projectInfo} isNoDongMode={isNoDongMode} openExcelModal={handleExcelExport} handleUpdateStock={handleUpdateStock} setViewMode={setViewMode} setManualData={setManualData} exportSelections={exportSelections} toggleSelection={toggleSelection} isLoggedIn={isLoggedIn} handleLogin={handleLogin} />)}
                     </div>
