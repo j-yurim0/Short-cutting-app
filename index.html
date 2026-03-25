@@ -584,8 +584,10 @@
                                             const validCutLengths = cuts.map(p => parseFloat(p.l)).filter(l => !isNaN(l) && l > 0);
                                             const targetMaxLen = yellowCutLengths.length > 0 ? Math.max(...yellowCutLengths) : (validCutLengths.length > 0 ? Math.max(...validCutLengths) : 0);
                                             
-                                            // 본당 LOSS 270 이하일 때만 보라색 칠해지도록 복구
-                                            const isHighlightCondition = lossPerBar <= 270 && (lossPerBar + targetMaxLen) >= 1000 && (lossPerBar + targetMaxLen) <= 2700;
+                                            // 100x100, 100x50 일 때만 붉은색 경고 (500~1000) 및 보라색 하이라이트 (잔재 310이하) 적용
+                                            const isRedTarget = (row.w == '100' || row.h == '100');
+                                            const isHighlightCondition = lossPerBar <= 310 && (lossPerBar + targetMaxLen) >= 1000 && (lossPerBar + targetMaxLen) <= 2800;
+                                            const isRedLoss = isRedTarget && lossPerBar >= 500 && lossPerBar <= 1000;
 
                                             return (
                                                 <React.Fragment key={row.id || rIdx}>
@@ -615,7 +617,7 @@
                                                                     </div>
                                                                 </td>
                                                                 {isFirst && (<>
-                                                                    <td rowSpan={rowSpan} className={`border font-bold ${lossPerBar >= 500 && lossPerBar <= 1000 ? 'text-red-600 bg-[#FFCCBC]' : (lossPerBar < 100 ? 'text-red-500' : 'text-gray-700')}`}>{lossPerBar.toLocaleString()}</td>
+                                                                    <td rowSpan={rowSpan} className={`border font-bold ${isRedLoss ? 'text-red-600 bg-[#FFCCBC]' : (lossPerBar < 100 ? 'text-red-500' : 'text-gray-700')}`}>{lossPerBar.toLocaleString()}</td>
                                                                     <td rowSpan={rowSpan} className="border text-gray-600">{totalRowLoss.toLocaleString()}</td>
                                                                     <td rowSpan={rowSpan} className="border p-0"><input className="input-cell text-left px-1" value={row.remark || ''} onChange={e => handleStockChange(rIdx, 'remark', e.target.value)} placeholder="비고 입력" data-ridx={rIdx} data-col="remark" /></td>
                                                                 </>)}
@@ -970,6 +972,8 @@
                                     const inputWeight = (totalStockLen / 1000) * unitWeight;
                                     const lossWeight = (totalLossValue / 1000) * unitWeight;
                                     const prodWeight = inputWeight - lossWeight;
+                                    
+                                    const isRedTarget = (w == '100' || h == '100');
 
                                     return (
                                         <div key={specKey || idx} className="break-before-page">
@@ -1001,8 +1005,9 @@
                                                         const validCutLengths = sortedParts.map(p => parseFloat(p.length)).filter(l => !isNaN(l) && l > 0);
                                                         const targetMaxLen = yellowCutLengths.length > 0 ? Math.max(...yellowCutLengths) : (validCutLengths.length > 0 ? Math.max(...validCutLengths) : 0);
                                                         
-                                                        // 본당 LOSS 270 이하일 때만 보라색 칠해지도록 복구
-                                                        const isHighlightCondition = groupRemainderNum <= 270 && (groupRemainderNum + targetMaxLen) >= 1000 && (groupRemainderNum + targetMaxLen) <= 2700;
+                                                        // 본당 LOSS 310 이하일 때만 보라색 칠해지도록 복구
+                                                        const isHighlightCondition = groupRemainderNum <= 310 && (groupRemainderNum + targetMaxLen) >= 1000 && (groupRemainderNum + targetMaxLen) <= 2800;
+                                                        const isRedLoss = isRedTarget && groupRemainderNum >= 500 && groupRemainderNum <= 1000;
 
                                                         return sortedParts.map((part, pIdx) => (
                                                             <tr key={`${gIdx}-${pIdx}`} className={`${rowClass} border-b border-gray-200 hover:bg-gray-50 transition print:bg-transparent`}>
@@ -1022,7 +1027,7 @@
                                                                 <td className={`border-x border-gray-200 text-left px-2 truncate ${part.isYellow ? 'bg-yellow-100' : ''}`} title={part.marking}>{part.marking}</td>
                                                                 {pIdx === 0 && (
                                                                     <>
-                                                                        <td rowSpan={sortedParts.length} className={`border-x border-gray-200 font-bold ${groupRemainderNum >= 500 && groupRemainderNum <= 1000 ? 'bg-[#FFCCBC] text-red-600' : ''}`}>{groupRemainderNum.toLocaleString()}</td>
+                                                                        <td rowSpan={sortedParts.length} className={`border-x border-gray-200 font-bold ${isRedLoss ? 'bg-[#FFCCBC] text-red-600' : ''}`}>{groupRemainderNum.toLocaleString()}</td>
                                                                         <td rowSpan={sortedParts.length} className="border-x border-gray-200 text-gray-500">{(groupRemainderNum * (parseFloat(group.qty) || 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
                                                                         <td rowSpan={sortedParts.length} className="border-x border-gray-200 text-gray-600 text-left px-1">{group.remark || ''}</td>
                                                                     </>
@@ -1281,10 +1286,14 @@
                 specKeys.forEach(specKey => { const { plan } = results[specKey]; let w = "?", h = "?", t = "?"; try { const dims = specKey.split(' ')[0] || ""; const thick = specKey.split(' ')[1] || ""; if (dims.includes('*')) [w, h] = dims.split('*'); else if (dims.includes('x')) [w, h] = dims.split('x'); t = thick.replace('T', ''); } catch (e) { } const unitWeight = getUnitWeight(w, h, t); const statKey = `${t}|${w}|${h}`; if (!statsMap[statKey]) { statsMap[statKey] = { t, w, h, inputLen: 0, inputWt: 0, prodLen: 0, prodWt: 0 }; } 
                 let sortedPlan = [...plan]; sortedPlan.sort((a, b) => (parseFloat(b.stockLength) || 0) - (parseFloat(a.stockLength) || 0)); 
                 sortedPlan.forEach(group => { grandTotalStockQty += Number(group.qty || 0); grandTotalLoss += (Number(group.remainder || 0) * Number(group.qty || 0)); const summaryKey = `${t}|${w}|${h}|${group.stockLength}`; if (!stockSummary[summaryKey]) stockSummary[summaryKey] = 0; stockSummary[summaryKey] += Number(group.qty || 0); const inL = Number(group.stockLength || 0) * Number(group.qty || 0); statsMap[statKey].inputLen += inL; statsMap[statKey].inputWt += (inL / 1000 * unitWeight); const groupStartRow = currentRow; const sortedParts = [...(group.parts || [])].sort((a, b) => parseFloat(a.length || 0) - parseFloat(b.length || 0)); const rowHeight = Math.max(1, sortedParts.length); const groupColor = { type: 'pattern', pattern: 'solid', fgColor: { argb: specColorMap[specKey] } }; 
-                const groupRemainderNum = parseFloat(group.remainder) || 0; const yellowCutLengths = sortedParts.filter(p => p.isYellow).map(p => parseFloat(p.length)).filter(l => !isNaN(l) && l > 0); const validCutLengths = sortedParts.map(p => parseFloat(p.length)).filter(l => !isNaN(l) && l > 0); const targetMaxLen = yellowCutLengths.length > 0 ? Math.max(...yellowCutLengths) : (validCutLengths.length > 0 ? Math.max(...validCutLengths) : 0); const isHighlightCondition = groupRemainderNum <= 270 && (groupRemainderNum + targetMaxLen) >= 1000 && (groupRemainderNum + targetMaxLen) <= 2700;
+                
+                const isRedTarget = (w == '100' || h == '100');
+                const groupRemainderNum = parseFloat(group.remainder) || 0; const yellowCutLengths = sortedParts.filter(p => p.isYellow).map(p => parseFloat(p.length)).filter(l => !isNaN(l) && l > 0); const validCutLengths = sortedParts.map(p => parseFloat(p.length)).filter(l => !isNaN(l) && l > 0); const targetMaxLen = yellowCutLengths.length > 0 ? Math.max(...yellowCutLengths) : (validCutLengths.length > 0 ? Math.max(...validCutLengths) : 0); const isHighlightCondition = groupRemainderNum <= 310 && (groupRemainderNum + targetMaxLen) >= 1000 && (groupRemainderNum + targetMaxLen) <= 2800;
+                const isRedLoss = isRedTarget && groupRemainderNum >= 500 && groupRemainderNum <= 1000;
+
                 sortedParts.forEach((part, pIdx) => { grandTotalCutQty += Number(part.totalQty || 0); const outL = Number(part.length || 0) * Number(part.totalQty || 0); statsMap[statKey].prodLen += outL; statsMap[statKey].prodWt += (outL / 1000 * unitWeight); const partKey = `${t}|${w}|${h}|${part.length}|${part.marking}`; if (cutPartMap.has(partKey)) { cutPartMap.get(partKey).qty += Number(part.totalQty || 0); } else { cutPartMap.set(partKey, { t, w, h, length: part.length, qty: Number(part.totalQty || 0), marking: part.marking, specKey }); } const row = worksheet.getRow(currentRow); if (pIdx === 0) { row.getCell(1).value = seq++; row.getCell(2).value = t; row.getCell(3).value = w; row.getCell(4).value = h; row.getCell(5).value = Number(group.stockLength); row.getCell(6).value = Math.floor(group.qty); } row.getCell(7).value = Number(part.length); row.getCell(8).value = (part.totalQty / group.qty); row.getCell(9).value = Math.floor(part.totalQty); row.getCell(10).value = part.marking; if (pIdx === 0) { row.getCell(11).value = Number(group.remainder); row.getCell(12).value = Number(group.remainder) * Number(group.qty); row.getCell(13).value = group.remark || ''; } for (let c = 1; c <= 13; c++) { const cell = row.getCell(c); cell.border = borderAll; cell.alignment = alignCenter; cell.font = fontNormal; if (c <= 5) { cell.fill = groupColor; } else if (c === 6 || c === 9) { cell.fill = fillLightGray; } else { cell.fill = fillWhite; } if ([5, 6, 9, 11, 12].includes(c)) cell.numFmt = '#,##0'; if (c === 1 && isHighlightCondition && pIdx === 0) { cell.fill = fillPurple; cell.font = fontPurpleBold; } } 
                 if (part.isYellow) { for (let c = 7; c <= 10; c++) { row.getCell(c).fill = fillYellow; } }
-                row.getCell(5).font = fontBold; row.getCell(7).font = fontBold; row.getCell(9).font = fontBold; if (pIdx === 0 && groupRemainderNum >= 500 && groupRemainderNum <= 1000) { const lossCell = row.getCell(11); lossCell.fill = fillRed; lossCell.font = fontRedBold; } currentRow++; }); 
+                row.getCell(5).font = fontBold; row.getCell(7).font = fontBold; row.getCell(9).font = fontBold; if (pIdx === 0 && isRedLoss) { const lossCell = row.getCell(11); lossCell.fill = fillRed; lossCell.font = fontRedBold; } currentRow++; }); 
                 if (rowHeight > 1) { const endRow = groupStartRow + rowHeight - 1; [1, 2, 3, 4, 5, 6, 11, 12, 13].forEach(c => worksheet.mergeCells(groupStartRow, c, endRow, c)); } const lastRowOfGroup = worksheet.getRow(currentRow - 1); for (let c = 1; c <= 13; c++) lastRowOfGroup.getCell(c).border = { ...borderAll, bottom: { style: 'medium' } }; }); }); 
                 const totalRow = worksheet.getRow(currentRow); totalRow.getCell(1).value = '합 계'; worksheet.mergeCells(currentRow, 1, currentRow, 5); totalRow.getCell(6).value = Math.floor(grandTotalStockQty); totalRow.getCell(7).value = '합 계'; worksheet.mergeCells(currentRow, 7, currentRow, 8); totalRow.getCell(9).value = Math.floor(grandTotalCutQty); totalRow.getCell(12).value = grandTotalLoss; for (let c = 1; c <= 13; c++) { const cell = totalRow.getCell(c); cell.fill = fillTotal; cell.font = fontBold; cell.border = borderAll; cell.alignment = alignCenter; if ([6, 9, 12].includes(c)) cell.numFmt = '#,##0'; } const mainTableEndRow = currentRow; currentRow += 4; 
                 const statsStartRow = 5; const statsColStart = 17; const statsTitleRow = worksheet.getRow(statsStartRow); statsTitleRow.getCell(statsColStart).value = '중량 및 길이 집계표'; worksheet.mergeCells(statsStartRow, statsColStart, statsStartRow, statsColStart + 5); statsTitleRow.getCell(statsColStart).style = { font: fontBold, fill: fillHeader, alignment: alignCenter, border: borderAll }; const statsHeaderRow = worksheet.getRow(statsStartRow + 1); ['규격', '투입 길이(m)', '생산 길이(m)', '투입 중량(kg)', '생산 중량(kg)', 'LOSS 중량(kg)'].forEach((h, i) => { const cell = statsHeaderRow.getCell(statsColStart + i); cell.value = h; cell.style = { font: fontBold, fill: fillHeader, alignment: alignCenter, border: borderAll }; }); let grandInLen = 0, grandProdLen = 0, grandInWt = 0, grandProdWt = 0; let statsRowIdx = statsStartRow + 2; const sortedStatKeys = Object.keys(statsMap).sort((a, b) => { const [t1, w1, h1] = a.split('|').map(Number); const [t2, w2, h2] = b.split('|').map(Number); if (w1 !== w2) return w2 - w1; if (h1 !== h2) return h2 - h1; return t1 - t2; }); 
