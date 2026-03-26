@@ -129,7 +129,7 @@
             { row: 18, w: 100, h: 100, t: '2.1', l: 5000 }, { row: 19, w: 100, h: 100, t: '2.1', l: 6000 }, { row: 20, w: 100, h: 100, t: '2.1', l: 6600 }, { row: 21, w: 100, h: 100, t: '2.1', l: 7200 }, { row: 22, w: 100, h: 100, t: '2.1', l: 8000 },
             { row: 24, w: 100, h: 100, t: '2.3', l: 5000 }, { row: 25, w: 100, h: 100, t: '2.3', l: 6000 }, { row: 26, w: 100, h: 100, t: '2.3', l: 7200 }, { row: 27, w: 100, h: 100, t: '2.3', l: 8000 },
             { row: 29, w: 100, h: 100, t: '3.0', l: 5000 }, { row: 30, w: 100, h: 100, t: '3.0', l: 6000 }, { row: 31, w: 100, h: 100, t: '3.0', l: 7200 }, { row: 32, w: 100, h: 100, t: '3.0', l: 8000 },
-            { row: 34, w: 100, h: 100, t: '3.2', l: 6000 }, { row: 35, w: 100, h: 100, t: '3.2', l: 6200 }, { row: 36, w: 100, h: 100, t: '3.2', l: 7200 }, { row: 37, w: 100, h: 100, t: '3.2', l: 8000 }
+            { row: 34, w: 100, h: 100, t: '3.2', l: 6000 }, { row: 35, w: 100, h: 100, t: '3.2', l: 6600 }, { row: 36, w: 100, h: 100, t: '3.2', l: 7200 }, { row: 37, w: 100, h: 100, t: '3.2', l: 8000 }
         ];
 
         const getUnitWeight = (w, h, t) => {
@@ -354,6 +354,17 @@
             };
 
             const selectedSum = Array.from(selectedCells.values()).reduce((a, b) => a + b, 0);
+
+            // 마우스 휠 스크롤 시 숫자 증감 방지
+            useEffect(() => {
+                const handleWheel = (e) => {
+                    if (document.activeElement && document.activeElement.type === 'number') {
+                        document.activeElement.blur();
+                    }
+                };
+                window.addEventListener('wheel', handleWheel, { passive: false });
+                return () => window.removeEventListener('wheel', handleWheel);
+            }, []);
 
             // --- 키보드 기하학적 및 논리적 이동 기능 ---
             const handleKeyDown = (e) => {
@@ -584,10 +595,12 @@
                                             const validCutLengths = cuts.map(p => parseFloat(p.l)).filter(l => !isNaN(l) && l > 0);
                                             const targetMaxLen = yellowCutLengths.length > 0 ? Math.max(...yellowCutLengths) : (validCutLengths.length > 0 ? Math.max(...validCutLengths) : 0);
                                             
-                                            // 100x100, 100x50 일 때만 붉은색 경고 (500~1000) 및 보라색 하이라이트 (잔재 310이하) 적용
+                                            // 100x100, 100x50 일 때만 붉은색 경고 (500~1000) 적용
                                             const isRedTarget = (row.w == '100' || row.h == '100');
-                                            const isHighlightCondition = lossPerBar <= 310 && (lossPerBar + targetMaxLen) >= 1000 && (lossPerBar + targetMaxLen) <= 2800;
                                             const isRedLoss = isRedTarget && lossPerBar >= 500 && lossPerBar <= 1000;
+
+                                            // 보라색 하이라이트 규칙 (원래 조건 복구)
+                                            const isHighlightCondition = lossPerBar <= 310 && (lossPerBar + targetMaxLen) >= 1000 && (lossPerBar + targetMaxLen) <= 2800;
 
                                             return (
                                                 <React.Fragment key={row.id || rIdx}>
@@ -972,8 +985,6 @@
                                     const inputWeight = (totalStockLen / 1000) * unitWeight;
                                     const lossWeight = (totalLossValue / 1000) * unitWeight;
                                     const prodWeight = inputWeight - lossWeight;
-                                    
-                                    const isRedTarget = (w == '100' || h == '100');
 
                                     return (
                                         <div key={specKey || idx} className="break-before-page">
@@ -1005,8 +1016,10 @@
                                                         const validCutLengths = sortedParts.map(p => parseFloat(p.length)).filter(l => !isNaN(l) && l > 0);
                                                         const targetMaxLen = yellowCutLengths.length > 0 ? Math.max(...yellowCutLengths) : (validCutLengths.length > 0 ? Math.max(...validCutLengths) : 0);
                                                         
-                                                        // 본당 LOSS 310 이하일 때만 보라색 칠해지도록 복구
+                                                        // 보라색 하이라이트 규칙 (원래 조건으로 깔끔하게 복구)
                                                         const isHighlightCondition = groupRemainderNum <= 310 && (groupRemainderNum + targetMaxLen) >= 1000 && (groupRemainderNum + targetMaxLen) <= 2800;
+                                                        
+                                                        const isRedTarget = (w == '100' || h == '100');
                                                         const isRedLoss = isRedTarget && groupRemainderNum >= 500 && groupRemainderNum <= 1000;
 
                                                         return sortedParts.map((part, pIdx) => (
@@ -1160,6 +1173,17 @@
                 }
             }, [dongs.length]);
 
+            // 마우스 휠 스크롤 시 숫자 증감 방지
+            useEffect(() => {
+                const handleWheel = (e) => {
+                    if (document.activeElement && document.activeElement.type === 'number') {
+                        document.activeElement.blur();
+                    }
+                };
+                window.addEventListener('wheel', handleWheel, { passive: false });
+                return () => window.removeEventListener('wheel', handleWheel);
+            }, []);
+
             const initFirebase = async () => { if (!window.FirebaseSDK) return; try { const { initializeApp, getAuth } = window.FirebaseSDK; setIsFirebaseReady(true); } catch (e) { console.warn(e); } };
             useEffect(() => { if (window.FirebaseSDK) initFirebase(); else window.addEventListener('firebase-sdk-ready', initFirebase); return () => window.removeEventListener('firebase-sdk-ready', initFirebase); }, []);
 
@@ -1274,7 +1298,8 @@
                 const allResults = resultsByDong[targetDong]; const results = allResults[mode]; const specKeys = Object.keys(results).sort(); 
                 worksheet.columns = [{ width: 7 }, { width: 7 }, { width: 7 }, { width: 7 }, { width: 12 }, { width: 8 }, { width: 12 }, { width: 8 }, { width: 8 }, { width: 22 }, { width: 12 }, { width: 14 }, { width: 12 }, { width: 5 }, { width: 5 }, { width: 5 }, { width: 20 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 18 }, { width: 18 }]; 
                 const fontNormal = { name: "Malgun Gothic", size: 11, color: { argb: "FF000000" } }; const fontBold = { name: "Malgun Gothic", size: 11, bold: true, color: { argb: "FF000000" } }; const fontTitle = { name: "Malgun Gothic", size: 15, bold: true, color: { argb: "FF000000" } }; const fontRedBold = { name: "Malgun Gothic", size: 11, bold: true, color: { argb: "FFFF0000" } }; 
-                const fillHeader = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCEEFF' } }; const fillTotal = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCEEFF' } }; const fillRed = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFCCBC' } }; const fillYellow = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } }; const fillLightGray = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEEEEE' } }; const fillWhite = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }; const fillPurple = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE9D5FF' } }; const fontPurpleBold = { name: "Malgun Gothic", size: 11, bold: true, color: { argb: "FF581C87" } };
+                const fillHeader = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCEEFF' } }; const fillTotal = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCCEEFF' } }; const fillRed = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFCCBC' } }; const fillYellow = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } }; const fillLightGray = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEEEEE' } }; const fillWhite = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } }; 
+                const fillPurple = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE9D5FF' } }; const fontPurpleBold = { name: "Malgun Gothic", size: 11, bold: true, color: { argb: "FF581C87" } };
                 const borderAll = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } }; const alignCenter = { vertical: 'middle', horizontal: 'center' }; 
                 const palette = ["FFFFFFFF", "FFFFF2CC", "FFFCE4EC", "FFE2F0D9", "FFE1F5FE", "FFF3E5F5"]; const specColorMap = {}; specKeys.forEach((key, idx) => { specColorMap[key] = (specKeys.length > 1) ? palette[idx % palette.length] : "FFFFFFFF"; }); 
                 let currentRow = 1; const titleRow = worksheet.getRow(currentRow); let titleText = `※ ${projectInfo.company || '업체명'}(${projectInfo.site || '현장명'})`; if (!isNoDongMode) titleText += ` - ${targetDong}`; 
@@ -1288,7 +1313,12 @@
                 sortedPlan.forEach(group => { grandTotalStockQty += Number(group.qty || 0); grandTotalLoss += (Number(group.remainder || 0) * Number(group.qty || 0)); const summaryKey = `${t}|${w}|${h}|${group.stockLength}`; if (!stockSummary[summaryKey]) stockSummary[summaryKey] = 0; stockSummary[summaryKey] += Number(group.qty || 0); const inL = Number(group.stockLength || 0) * Number(group.qty || 0); statsMap[statKey].inputLen += inL; statsMap[statKey].inputWt += (inL / 1000 * unitWeight); const groupStartRow = currentRow; const sortedParts = [...(group.parts || [])].sort((a, b) => parseFloat(a.length || 0) - parseFloat(b.length || 0)); const rowHeight = Math.max(1, sortedParts.length); const groupColor = { type: 'pattern', pattern: 'solid', fgColor: { argb: specColorMap[specKey] } }; 
                 
                 const isRedTarget = (w == '100' || h == '100');
-                const groupRemainderNum = parseFloat(group.remainder) || 0; const yellowCutLengths = sortedParts.filter(p => p.isYellow).map(p => parseFloat(p.length)).filter(l => !isNaN(l) && l > 0); const validCutLengths = sortedParts.map(p => parseFloat(p.length)).filter(l => !isNaN(l) && l > 0); const targetMaxLen = yellowCutLengths.length > 0 ? Math.max(...yellowCutLengths) : (validCutLengths.length > 0 ? Math.max(...validCutLengths) : 0); const isHighlightCondition = groupRemainderNum <= 310 && (groupRemainderNum + targetMaxLen) >= 1000 && (groupRemainderNum + targetMaxLen) <= 2800;
+                const groupRemainderNum = parseFloat(group.remainder) || 0; 
+                const yellowCutLengths = sortedParts.filter(p => p.isYellow).map(p => parseFloat(p.length)).filter(l => !isNaN(l) && l > 0); 
+                const validCutLengths = sortedParts.map(p => parseFloat(p.length)).filter(l => !isNaN(l) && l > 0); 
+                const targetMaxLen = yellowCutLengths.length > 0 ? Math.max(...yellowCutLengths) : (validCutLengths.length > 0 ? Math.max(...validCutLengths) : 0); 
+                
+                const isHighlightCondition = groupRemainderNum <= 310 && (groupRemainderNum + targetMaxLen) >= 1000 && (groupRemainderNum + targetMaxLen) <= 2800;
                 const isRedLoss = isRedTarget && groupRemainderNum >= 500 && groupRemainderNum <= 1000;
 
                 sortedParts.forEach((part, pIdx) => { grandTotalCutQty += Number(part.totalQty || 0); const outL = Number(part.length || 0) * Number(part.totalQty || 0); statsMap[statKey].prodLen += outL; statsMap[statKey].prodWt += (outL / 1000 * unitWeight); const partKey = `${t}|${w}|${h}|${part.length}|${part.marking}`; if (cutPartMap.has(partKey)) { cutPartMap.get(partKey).qty += Number(part.totalQty || 0); } else { cutPartMap.set(partKey, { t, w, h, length: part.length, qty: Number(part.totalQty || 0), marking: part.marking, specKey }); } const row = worksheet.getRow(currentRow); if (pIdx === 0) { row.getCell(1).value = seq++; row.getCell(2).value = t; row.getCell(3).value = w; row.getCell(4).value = h; row.getCell(5).value = Number(group.stockLength); row.getCell(6).value = Math.floor(group.qty); } row.getCell(7).value = Number(part.length); row.getCell(8).value = (part.totalQty / group.qty); row.getCell(9).value = Math.floor(part.totalQty); row.getCell(10).value = part.marking; if (pIdx === 0) { row.getCell(11).value = Number(group.remainder); row.getCell(12).value = Number(group.remainder) * Number(group.qty); row.getCell(13).value = group.remark || ''; } for (let c = 1; c <= 13; c++) { const cell = row.getCell(c); cell.border = borderAll; cell.alignment = alignCenter; cell.font = fontNormal; if (c <= 5) { cell.fill = groupColor; } else if (c === 6 || c === 9) { cell.fill = fillLightGray; } else { cell.fill = fillWhite; } if ([5, 6, 9, 11, 12].includes(c)) cell.numFmt = '#,##0'; if (c === 1 && isHighlightCondition && pIdx === 0) { cell.fill = fillPurple; cell.font = fontPurpleBold; } } 
@@ -1380,11 +1410,21 @@
                 if (!hasData) { alert("선택한 범위/모드에 대한 데이터가 없습니다."); return; }
 
                 try {
-                    const headerRange = 'Sheet1!H4:AK4'; const headerRes = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: headerRange });
+                    const headerRange = 'Sheet1!H4:AK4'; 
+                    const headerRes = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: headerRange });
                     const headers = headerRes.result.values ? headerRes.result.values[0] : [];
-                    let emptyColIndex = headers.length; 
-                    if(emptyColIndex >= 30) { alert("더 이상 기록할 빈 열이 없습니다 (AK열 초과)."); return; }
-                    const targetColNum = 8 + emptyColIndex; const targetColLetter = getColumnLetter(targetColNum);
+                    
+                    let emptyColIndex = -1;
+                    for (let i = 0; i < 30; i++) {
+                        if (!headers[i] || headers[i].toString().trim() === '') {
+                            emptyColIndex = i;
+                            break;
+                        }
+                    }
+
+                    if(emptyColIndex === -1) { alert("더 이상 기록할 빈 열이 없습니다 (AK열 초과)."); return; }
+                    const targetColNum = 8 + emptyColIndex;
+                    const targetColLetter = getColumnLetter(targetColNum);
 
                     const updateData = []; const companyName = `${projectInfo.company || '업체미상'}(${projectInfo.site || '현장미상'})`;
                     updateData.push({ range: `Sheet1!${targetColLetter}4`, values: [[companyName]] });
@@ -1396,7 +1436,7 @@
 
                     if(updateData.length === 1) { alert("차감할 재고 사용량이 없습니다."); return; }
                     await gapi.client.sheets.spreadsheets.values.batchUpdate({ spreadsheetId: SPREADSHEET_ID, resource: { data: updateData, valueInputOption: 'USER_ENTERED' } });
-                    alert(`재고 차감이 완료되었습니다.\n기록된 열: ${targetColLetter}`); setIsStockModalOpen(false);
+                    alert(`재고 차감이 완료되었습니다.\n기록된 열: ${targetColLetter}`); 
                 } catch (error) { console.error(error); alert("재고 차감 중 오류가 발생했습니다. 구글 계정 권한을 확인하세요."); }
             };
 
