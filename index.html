@@ -109,6 +109,12 @@
         const Save = (props) => <IconWrapper {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></IconWrapper>;
         const FileSpreadsheet = (props) => <IconWrapper {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><path d="M8 13h2" /><path d="M8 17h2" /><path d="M14 13h2" /><path d="M14 17h2" /></IconWrapper>;
         const RotateCcw = (props) => <IconWrapper {...props}><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></IconWrapper>;
+        
+        // 새로 추가된 커스텀 숫자 2 아이콘
+        const AppTwoIcon = (props) => <IconWrapper {...props}>
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <path d="M9 10.5a3 3 0 0 1 6 0c0 2-6 5.5-6 5.5h6" />
+        </IconWrapper>;
 
         const UNIT_WEIGHT_DATA = {
             "100-100-3.2": 9.52, "100-100-3.0": 8.96, "100-100-2.3": 6.95, "100-100-2.1": 6.37,
@@ -1089,7 +1095,8 @@
                 <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
                     <div className="bg-white p-8 rounded-2xl shadow-xl w-[500px] text-center border-t-4 border-indigo-500">
                         <div className="mx-auto bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mb-4">
-                            <FileCode size={32} className="text-indigo-600" />
+                            {/* 여기서 아이콘을 변경했습니다 */}
+                            <AppTwoIcon size={32} className="text-indigo-600" />
                         </div>
                         <h1 className="text-2xl font-bold text-gray-800 mb-2">Smart CP Editor</h1>
                         <p className="text-sm text-gray-500 mb-6">App 1 (플래너)에서 복사한 소스 코드를 아래에 붙여넣으세요.</p>
@@ -1302,7 +1309,12 @@
                 const fillPurple = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE9D5FF' } }; const fontPurpleBold = { name: "Malgun Gothic", size: 11, bold: true, color: { argb: "FF581C87" } };
                 const borderAll = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } }; const alignCenter = { vertical: 'middle', horizontal: 'center' }; 
                 const palette = ["FFFFFFFF", "FFFFF2CC", "FFFCE4EC", "FFE2F0D9", "FFE1F5FE", "FFF3E5F5"]; const specColorMap = {}; specKeys.forEach((key, idx) => { specColorMap[key] = (specKeys.length > 1) ? palette[idx % palette.length] : "FFFFFFFF"; }); 
-                let currentRow = 1; const titleRow = worksheet.getRow(currentRow); let titleText = `※ ${projectInfo.company || '업체명'}(${projectInfo.site || '현장명'})`; if (!isNoDongMode) titleText += ` - ${targetDong}`; 
+                let currentRow = 1; const titleRow = worksheet.getRow(currentRow); 
+                const comp = projectInfo.company || '';
+                const site = projectInfo.site ? `(${projectInfo.site})` : '';
+                let titleText = `※ ${comp}${site}`.trim();
+                if (titleText === '※') titleText = '※ CP 데이터';
+                if (!isNoDongMode) titleText += ` - ${targetDong}`; 
                 titleRow.getCell(1).value = titleText; titleRow.getCell(1).font = fontTitle; worksheet.mergeCells(`A${currentRow}:M${currentRow}`); currentRow += 2; 
                 const noteParts = []; if (projectInfo.isIronBanding) noteParts.push("철밴딩 동표기"); if (projectInfo.isUnder1Ton) noteParts.push("1톤 미만 밴딩"); if (projectInfo.note) noteParts.push(projectInfo.note); 
                 if (noteParts.length > 0) { const noteRow = worksheet.getRow(currentRow); noteRow.getCell(1).value = noteParts.join(', '); noteRow.getCell(1).font = projectInfo.isIronBanding ? fontBold : fontNormal; noteRow.getCell(1).alignment = alignCenter; if (projectInfo.isIronBanding) noteRow.getCell(1).fill = fillYellow; noteRow.getCell(1).border = borderAll; worksheet.mergeCells(`A${currentRow}:M${currentRow}`); } currentRow += 2; 
@@ -1362,11 +1374,12 @@
                                 const buffer = await masterWorkbook.xlsx.writeBuffer(); 
                                 
                                 // 파일 이름: 업체명_현장명(_동이름)_CP.xlsx
-                                let fileName = `${projectInfo.company || '업체명'}_${projectInfo.site || '현장명'}`; 
-                                if (!isNoDongMode) {
-                                    fileName += `_${dName}`; 
-                                }
-                                fileName += '_CP.xlsx'; 
+                                let fileNameParts = [];
+                                if (projectInfo.company) fileNameParts.push(projectInfo.company);
+                                if (projectInfo.site) fileNameParts.push(projectInfo.site);
+                                if (!isNoDongMode) fileNameParts.push(dName);
+                                
+                                let fileName = fileNameParts.length > 0 ? fileNameParts.join('_') + '_CP.xlsx' : 'CP_데이터.xlsx'; 
                                 
                                 const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }); 
                                 saveAs(blob, fileName); 
@@ -1426,7 +1439,12 @@
                     const targetColNum = 8 + emptyColIndex;
                     const targetColLetter = getColumnLetter(targetColNum);
 
-                    const updateData = []; const companyName = `${projectInfo.company || '업체미상'}(${projectInfo.site || '현장미상'})`;
+                    const updateData = []; 
+                    const comp = projectInfo.company || '';
+                    const site = projectInfo.site ? `(${projectInfo.site})` : '';
+                    let companyName = `${comp}${site}`.trim();
+                    if (!companyName) companyName = '-'; // 미입력 시 공백 처리
+                    
                     updateData.push({ range: `Sheet1!${targetColLetter}4`, values: [[companyName]] });
 
                     SHEET_ROW_MAP.forEach(map => {
