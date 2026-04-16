@@ -877,6 +877,13 @@
             };
 
             const initiateStockUpdate = () => {
+                const expiresAt = localStorage.getItem('gapi_token_expires_at');
+                if (isLoggedIn && expiresAt && Date.now() > parseInt(expiresAt)) {
+                    alert("구글 로그인 세션(1시간)이 만료되었습니다. 팝업창에서 로그인을 연장해주세요.");
+                    handleLogin();
+                    return;
+                }
+
                 if (!isLoggedIn) {
                     alert("구글 시트 연동을 위한 로그인이 필요합니다. 팝업창에서 로그인을 진행해주세요.");
                     handleLogin();
@@ -1198,11 +1205,29 @@
             useEffect(() => { if (window.FirebaseSDK) initFirebase(); else window.addEventListener('firebase-sdk-ready', initFirebase); return () => window.removeEventListener('firebase-sdk-ready', initFirebase); }, []);
 
             useEffect(() => {
-                const initGapi = () => { gapi.load('client', async () => { await gapi.client.init({ apiKey: API_KEY, discoveryDocs: [DISCOVERY_DOC] }); }); };
+                const initGapi = () => { gapi.load('client', async () => { 
+                    await gapi.client.init({ apiKey: API_KEY, discoveryDocs: [DISCOVERY_DOC] }); 
+                    
+                    // 로컬스토리지에서 로그인 세션(토큰) 확인 및 복구
+                    const token = localStorage.getItem('gapi_access_token');
+                    const expiresAt = localStorage.getItem('gapi_token_expires_at');
+                    if (token && expiresAt && Date.now() < parseInt(expiresAt)) {
+                        gapi.client.setToken({ access_token: token });
+                        setIsLoggedIn(true);
+                    }
+                }); };
                 const initGis = () => { 
                     const client = google.accounts.oauth2.initTokenClient({ 
                         client_id: CLIENT_ID, scope: SCOPES, 
-                        callback: (tokenResponse) => { if (tokenResponse && tokenResponse.access_token) setIsLoggedIn(true); } 
+                        callback: (tokenResponse) => { 
+                            if (tokenResponse && tokenResponse.access_token) { 
+                                // 발급된 토큰과 만료 시간(약 1시간)을 로컬스토리지에 저장
+                                const expiresAt = Date.now() + (tokenResponse.expires_in * 1000);
+                                localStorage.setItem('gapi_access_token', tokenResponse.access_token);
+                                localStorage.setItem('gapi_token_expires_at', expiresAt);
+                                setIsLoggedIn(true); 
+                            } 
+                        } 
                     }); 
                     setTokenClient(client); 
                 };
@@ -1458,7 +1483,18 @@
                     if(updateData.length === 1) { alert("차감할 재고 사용량이 없습니다."); return; }
                     await gapi.client.sheets.spreadsheets.values.batchUpdate({ spreadsheetId: SPREADSHEET_ID, resource: { data: updateData, valueInputOption: 'USER_ENTERED' } });
                     alert(`재고 차감이 완료되었습니다.\n기록된 열: ${targetColLetter}`); 
-                } catch (error) { console.error(error); alert("재고 차감 중 오류가 발생했습니다. 구글 계정 권한을 확인하세요."); }
+                } catch (error) { 
+                    console.error(error); 
+                    if (error.status === 401 || (error.result && error.result.error && error.result.error.code === 401)) {
+                        alert("구글 로그인 인증이 만료되었습니다. 다시 '선택 항목 재고 차감' 버튼을 눌러 로그인을 진행해주세요.");
+                        setIsLoggedIn(false);
+                        localStorage.removeItem('gapi_access_token');
+                        localStorage.removeItem('gapi_token_expires_at');
+                        if (gapi.client.getToken()) gapi.client.setToken(null);
+                    } else {
+                        alert("재고 차감 중 오류가 발생했습니다. 구글 계정 권한을 확인하세요."); 
+                    }
+                }
             };
 
             if (!isLoaded) return <ImportView onImport={handleImportData} />;
