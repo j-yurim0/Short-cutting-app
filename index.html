@@ -609,7 +609,7 @@
                                             const isRedLoss = isRedTarget && lossPerBar >= 500 && lossPerBar <= 1000;
 
                                             // 보라색 하이라이트 규칙 (원래 조건 복구)
-                                            const isHighlightCondition = lossPerBar <= 310 && (lossPerBar + targetMaxLen) >= 1000 && (lossPerBar + targetMaxLen) <= 2800;
+                                            const isHighlightCondition = lossPerBar <= 310 && (lossPerBar + targetMaxLen) >= 1000 && (lossPerBar + targetMaxLen) <= 2900;
 
                                             return (
                                                 <React.Fragment key={row.id || rIdx}>
@@ -1033,7 +1033,7 @@
                                                         const targetMaxLen = yellowCutLengths.length > 0 ? Math.max(...yellowCutLengths) : (validCutLengths.length > 0 ? Math.max(...validCutLengths) : 0);
                                                         
                                                         // 보라색 하이라이트 규칙 (원래 조건으로 깔끔하게 복구)
-                                                        const isHighlightCondition = groupRemainderNum <= 310 && (groupRemainderNum + targetMaxLen) >= 1000 && (groupRemainderNum + targetMaxLen) <= 2800;
+                                                        const isHighlightCondition = groupRemainderNum <= 310 && (groupRemainderNum + targetMaxLen) >= 1000 && (groupRemainderNum + targetMaxLen) <= 2900;
                                                         
                                                         const isRedTarget = (w == '100' || h == '100');
                                                         const isRedLoss = isRedTarget && groupRemainderNum >= 500 && groupRemainderNum <= 1000;
@@ -1358,7 +1358,7 @@
                 const validCutLengths = sortedParts.map(p => parseFloat(p.length)).filter(l => !isNaN(l) && l > 0); 
                 const targetMaxLen = yellowCutLengths.length > 0 ? Math.max(...yellowCutLengths) : (validCutLengths.length > 0 ? Math.max(...validCutLengths) : 0); 
                 
-                const isHighlightCondition = groupRemainderNum <= 310 && (groupRemainderNum + targetMaxLen) >= 1000 && (groupRemainderNum + targetMaxLen) <= 2800;
+                const isHighlightCondition = groupRemainderNum <= 310 && (groupRemainderNum + targetMaxLen) >= 1000 && (groupRemainderNum + targetMaxLen) <= 2900;
                 const isRedLoss = isRedTarget && groupRemainderNum >= 500 && groupRemainderNum <= 1000;
 
                 sortedParts.forEach((part, pIdx) => { grandTotalCutQty += Number(part.totalQty || 0); const outL = Number(part.length || 0) * Number(part.totalQty || 0); statsMap[statKey].prodLen += outL; statsMap[statKey].prodWt += (outL / 1000 * unitWeight); const partKey = `${t}|${w}|${h}|${part.length}|${part.marking}`; if (cutPartMap.has(partKey)) { cutPartMap.get(partKey).qty += Number(part.totalQty || 0); } else { cutPartMap.set(partKey, { t, w, h, length: part.length, qty: Number(part.totalQty || 0), marking: part.marking, specKey }); } const row = worksheet.getRow(currentRow); if (pIdx === 0) { row.getCell(1).value = seq++; row.getCell(2).value = t; row.getCell(3).value = w; row.getCell(4).value = h; row.getCell(5).value = Number(group.stockLength); row.getCell(6).value = Math.floor(group.qty); } row.getCell(7).value = Number(part.length); row.getCell(8).value = (part.totalQty / group.qty); row.getCell(9).value = Math.floor(part.totalQty); row.getCell(10).value = part.marking; if (pIdx === 0) { row.getCell(11).value = Number(group.remainder); row.getCell(12).value = Number(group.remainder) * Number(group.qty); row.getCell(13).value = group.remark || ''; } for (let c = 1; c <= 13; c++) { const cell = row.getCell(c); cell.border = borderAll; cell.alignment = alignCenter; cell.font = fontNormal; if (c <= 5) { cell.fill = groupColor; } else if (c === 6 || c === 9) { cell.fill = fillLightGray; } else { cell.fill = fillWhite; } if ([5, 6, 9, 11, 12].includes(c)) cell.numFmt = '#,##0'; if (c === 1 && isHighlightCondition && pIdx === 0) { cell.fill = fillPurple; cell.font = fontPurpleBold; } } 
